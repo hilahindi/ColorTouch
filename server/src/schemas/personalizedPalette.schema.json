@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://colortouch.dev/schemas/personalized-palette.json",
+  "title": "PersonalizedPalette",
+  "description": "Per-user palette derived from a BasePalette plus the end user's in-app preference questionnaire.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "palette_id",
+    "base_palette_id",
+    "base_palette_version",
+    "user_id",
+    "colors",
+    "ui_behavior",
+    "bi_insights",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "palette_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "base_palette_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "base_palette_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Snapshot of BasePalette.version at generation time. If it no longer matches the developer's current BasePalette.version, this object is stale and must be regenerated before being served."
+    },
+    "user_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["light", "dark"],
+      "properties": {
+        "light": { "$ref": "https://colortouch.dev/schemas/color-scheme.json" },
+        "dark": { "$ref": "https://colortouch.dev/schemas/color-scheme.json" }
+      }
+    },
+    "ui_behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["border_radius_dp", "animation_speed", "contrast_level", "elevation_style"],
+      "properties": {
+        "border_radius_dp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32,
+          "description": "Concrete dp value so the SDK can pass it straight into RoundedCornerShape(x.dp) with no mapping step."
+        },
+        "animation_speed": {
+          "type": "string",
+          "enum": ["slow", "normal", "fast", "reduced_motion"]
+        },
+        "contrast_level": {
+          "type": "string",
+          "enum": ["low", "normal", "high"]
+        },
+        "elevation_style": {
+          "type": "string",
+          "enum": ["flat", "shadowed"]
+        }
+      }
+    },
+    "bi_insights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["persona_label", "confidence_score", "traits"],
+      "properties": {
+        "persona_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "confidence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "traits": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "maxItems": 10,
+          "uniqueItems": true
+        },
+        "segment": {
+          "type": "string",
+          "maxLength": 60
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cache_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ttl_seconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

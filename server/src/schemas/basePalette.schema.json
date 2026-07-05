@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://colortouch.dev/schemas/base-palette.json",
+  "title": "BasePalette",
+  "description": "Default color palette generated once per developer account during onboarding, based on their app questionnaire answers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "palette_id",
+    "developer_id",
+    "version",
+    "app_metadata",
+    "colors",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "description": "Locks the wire format so client and server can detect a breaking schema change."
+    },
+    "palette_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "developer_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing per developer_id. Bumped on every re-generation. PersonalizedPalette.base_palette_version is compared against this for cache invalidation."
+    },
+    "app_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "personality_tags", "kpis"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "fintech",
+            "ecommerce",
+            "health_fitness",
+            "social",
+            "productivity",
+            "gaming",
+            "education",
+            "travel",
+            "food",
+            "other"
+          ]
+        },
+        "personality_tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "engagement",
+              "retention",
+              "conversion",
+              "session_length",
+              "onboarding_completion"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["light", "dark"],
+      "properties": {
+        "light": { "$ref": "https://colortouch.dev/schemas/color-scheme.json" },
+        "dark": { "$ref": "https://colortouch.dev/schemas/color-scheme.json" }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ai_meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string" },
+        "reasoning_summary": { "type": "string", "maxLength": 500 }
+      }
+    }
+  }
+}
