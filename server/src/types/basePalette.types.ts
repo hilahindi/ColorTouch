@@ -21,6 +21,12 @@ export type Kpi =
 
 export interface AppMetadata {
   category: AppCategory;
+  /** Free-text category name, only meaningful when category is "other". */
+  custom_category?: string;
+  /** Free-text context to help the AI generate a more accurate palette. */
+  app_name?: string;
+  app_description?: string;
+  target_audience?: string;
   personality_tags: string[];
   kpis: Kpi[];
 }

@@ -25,21 +25,24 @@ export interface PersonalizedPaletteServiceDeps {
 function isFreshForBase(
   cached: PersonalizedPalette,
   basePaletteId: string,
-  basePaletteVersion: number
+  basePaletteVersion: number,
 ): boolean {
   return (
-    cached.base_palette_id === basePaletteId && cached.base_palette_version === basePaletteVersion
+    cached.base_palette_id === basePaletteId &&
+    cached.base_palette_version === basePaletteVersion
   );
 }
 
 /**
  * Wires the given repositories/cache/AI provider into a
  * getOrGeneratePersonalizedPalette function. A composition root constructs
- * the concrete adapters (Postgres repositories, Redis cache, GrokAiProvider)
+ * the concrete adapters (Postgres repositories, Redis cache, GroqAiProvider)
  * and calls this once at startup — no adapter is hardcoded here so the
  * service stays testable with in-memory fakes.
  */
-export function createPersonalizedPaletteService(deps: PersonalizedPaletteServiceDeps) {
+export function createPersonalizedPaletteService(
+  deps: PersonalizedPaletteServiceDeps,
+) {
   const {
     aiProvider,
     basePaletteRepository,
@@ -51,19 +54,23 @@ export function createPersonalizedPaletteService(deps: PersonalizedPaletteServic
   async function getOrGeneratePersonalizedPalette(
     developerId: string,
     userId: string,
-    userAnswers: UserAnswers
+    userAnswers: UserAnswers,
   ): Promise<PersonalizedPalette> {
     // The passed-in answers are this user's latest submission of record —
     // persist them regardless of whether the cache below is a hit or miss.
     await userAnswersRepository.save(userAnswers);
 
-    const basePalette = await basePaletteRepository.findByDeveloper(developerId);
+    const basePalette =
+      await basePaletteRepository.findByDeveloper(developerId);
     if (!basePalette) {
       throw new BasePaletteNotFoundError(developerId);
     }
 
     const cached = await personalizedPaletteCache.get(userId);
-    if (cached && isFreshForBase(cached, basePalette.palette_id, basePalette.version)) {
+    if (
+      cached &&
+      isFreshForBase(cached, basePalette.palette_id, basePalette.version)
+    ) {
       return cached;
     }
 
@@ -81,8 +88,16 @@ export function createPersonalizedPaletteService(deps: PersonalizedPaletteServic
 
     await Promise.all([
       personalizedPaletteRepository.save(generated),
-      personalizedPaletteCache.set(userId, generated, generated.cache_control?.ttl_seconds),
+      personalizedPaletteCache.set(
+        userId,
+        generated,
+        generated.cache_control?.ttl_seconds,
+      ),
     ]);
+
+    console.log(
+      `Generated personalized palette for user "${userId}": ${JSON.stringify(generated)}`,
+    );
 
     return generated;
   }

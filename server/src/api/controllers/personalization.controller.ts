@@ -6,7 +6,9 @@ import { AiGenerationError } from "../../services/ai/aiClient";
 import { SchemaValidationError } from "../../validation/schemaValidator";
 import type { UserAnswers } from "../../types/userAnswers.types";
 
-type PersonalizedPaletteService = ReturnType<typeof createPersonalizedPaletteService>;
+type PersonalizedPaletteService = ReturnType<
+  typeof createPersonalizedPaletteService
+>;
 
 interface PersonalizedPaletteRequestBody {
   developerId: string;
@@ -20,20 +22,28 @@ interface PersonalizedPaletteRequestBody {
  * guaranteed the request shape by the time this runs — this layer only
  * maps service-level failures onto HTTP status codes the SDK can react to.
  */
-export function createPersonalizationController(service: PersonalizedPaletteService) {
-  async function getPersonalizedPalette(req: Request, res: Response): Promise<void> {
-    const { developerId, userId, userAnswers } = req.body as PersonalizedPaletteRequestBody;
+export function createPersonalizationController(
+  service: PersonalizedPaletteService,
+) {
+  async function getPersonalizedPalette(
+    req: Request,
+    res: Response,
+  ): Promise<void> {
+    const { developerId, userId, userAnswers } =
+      req.body as PersonalizedPaletteRequestBody;
 
     try {
       const palette = await service.getOrGeneratePersonalizedPalette(
         developerId,
         userId,
-        userAnswers
+        userAnswers,
       );
       res.status(200).json(palette);
     } catch (err) {
       if (err instanceof BasePaletteNotFoundError) {
-        res.status(404).json({ error: "BasePaletteNotFound", message: err.message });
+        res
+          .status(404)
+          .json({ error: "BasePaletteNotFound", message: err.message });
         return;
       }
 
@@ -43,7 +53,8 @@ export function createPersonalizationController(service: PersonalizedPaletteServ
         // fall back to its bundled default palette when it sees this status.
         res.status(503).json({
           error: "AiGenerationFailed",
-          message: "Personalized palette generation is temporarily unavailable. Please retry shortly.",
+          message:
+            "Personalized palette generation is temporarily unavailable. Please retry shortly.",
         });
         return;
       }
@@ -61,7 +72,8 @@ export function createPersonalizationController(service: PersonalizedPaletteServ
 
       res.status(500).json({
         error: "InternalError",
-        message: "An unexpected error occurred while generating the personalized palette.",
+        message:
+          "An unexpected error occurred while generating the personalized palette.",
       });
     }
   }

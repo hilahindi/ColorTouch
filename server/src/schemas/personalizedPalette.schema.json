@@ -74,7 +74,7 @@
     "bi_insights": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["persona_label", "confidence_score", "traits"],
+      "required": ["persona_label", "confidence_score", "traits", "mutation_reason"],
       "properties": {
         "persona_label": {
           "type": "string",
@@ -91,6 +91,12 @@
           "items": { "type": "string", "minLength": 1, "maxLength": 40 },
           "maxItems": 10,
           "uniqueItems": true
+        },
+        "mutation_reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Brief explanation of why (or whether) the personalized colors differ from the BasePalette's, e.g. 'Shifted red to blue for Protanopia contrast'."
         },
         "segment": {
           "type": "string",

@@ -17,6 +17,8 @@ export interface BiInsights {
   /** 0–1. Must reflect genuine certainty, not a fixed default. */
   confidence_score: number;
   traits: string[];
+  /** Why (or whether) colors differ from the BasePalette's, e.g. "Shifted red to blue for Protanopia contrast". */
+  mutation_reason: string;
   segment?: string;
 }
 

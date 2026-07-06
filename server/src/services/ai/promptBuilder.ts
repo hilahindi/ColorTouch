@@ -70,6 +70,18 @@ const CONTRAST_RULE = `Accessibility:
 - Every text-on-background pairing (e.g. onPrimary on primary, onSurface on surface) must meet WCAG AA: a contrast ratio of at least ${WCAG_AA_CONTRAST_RATIO}:1.
 - Verify this for both the "light" and "dark" color modes independently.`;
 
+// Placed first, ahead of everything else, and phrased as hard requirements
+// rather than suggestions — earlier prompt revisions let the model treat
+// "stay harmonious with the base identity" as license to return the base
+// colors unchanged. This block exists specifically to override that.
+const ACCESSIBILITY_OVERRIDE_RULES = `CRITICAL INSTRUCTION: You possess EXPLICIT PERMISSION and are REQUIRED to alter the actual HEX color codes from the Base Palette when the user profile demands it. Do NOT simply copy the base colors.
+
+- For Color Blindness (e.g., Protanopia): You MUST shift problematic colors. Change red/green semantic color roles (such as "error", or any role acting as a success/danger signal) to safe, high-contrast alternatives like blue, orange, or yellow.
+- For Low Vision or Direct Sunlight: You MUST mathematically increase the contrast ratio. Lighten the light-mode colors and darken the dark-mode background colors significantly. Do not just rely on the ui_behavior flags to carry accessibility — the HEX values themselves must change.
+- Accessibility absolutely overrides Brand Identity. If the base primary color is inaccessible for this specific user, CHANGE IT to a compliant HEX code. A personalized palette that is byte-for-byte identical to the base palette's colors is a failure, unless the user profile is a plain "standard" user with no accessibility needs.
+- MANDATORY CONSTRAINT: Your generated HEX codes MUST differ from the input Base Palette HEX codes by at least a significant perceptual margin (delta). If you are adapting for Protanopia or Low Vision, you MUST pick colors that are outside the problematic spectrum of the original palette. You are explicitly allowed to discard the original color identity if it conflicts with accessibility.
+- Include a brief field in bi_insights called "mutation_reason" explaining exactly why the color shifted from the base palette (e.g., "Shifted red to blue for Protanopia contrast"). If a color genuinely did not need to change (e.g. a plain standard user with no accessibility needs), say so explicitly instead of leaving this vague.`;
+
 function buildColorSchemeFieldList(): string {
   return MATERIAL3_COLOR_FIELDS.map((f) => `"${f}"`).join(", ");
 }
@@ -77,6 +89,8 @@ function buildColorSchemeFieldList(): string {
 export function buildBasePalettePrompt(appMetadata: AppMetadata): AiPrompt {
   const system = `You are a Material3 color system designer for the ColorTouch SDK.
 Given a developer's app metadata, generate a BasePalette: a light and dark Material3 ColorScheme that reflects the app's category and personality.
+
+If "app_name", "app_description", and/or "target_audience" are present in the app metadata below, treat them as the strongest signal of intended tone — read the description closely and let it drive hue, saturation, and mood choices, not just the "category" enum. category/personality_tags/kpis are structured hints; the free-text fields are what the app actually is.
 
 ${CONTRAST_RULE}
 
@@ -109,8 +123,10 @@ export function buildPersonalizedPalettePrompt(
 ): AiPrompt {
   const context = buildPromptContext(basePalette);
 
-  const system = `You are a Material3 color system designer for the ColorTouch SDK.
-Given an existing BasePalette (trimmed to its key seed colors) and an end user's in-app preference questionnaire, derive a PersonalizedPalette: a full light/dark Material3 ColorScheme plus ui_behavior and bi_insights, tailored to that user while staying harmonious with the base app identity.
+  const system = `${ACCESSIBILITY_OVERRIDE_RULES}
+
+You are a Material3 color system designer for the ColorTouch SDK.
+Given an existing BasePalette (trimmed to its key seed colors) and an end user's in-app preference questionnaire, derive a PersonalizedPalette: a full light/dark Material3 ColorScheme plus ui_behavior and bi_insights, tailored to that user. Stay harmonious with the base app identity only where doing so doesn't conflict with the accessibility requirements above — accessibility wins every conflict.
 
 ${CONTRAST_RULE}
 
@@ -119,7 +135,7 @@ ${describeUiBehaviorGuidance(userAnswers)}
 Schema:
 - "colors.light" and "colors.dark" must each contain exactly these fields, each a "#RRGGBB" hex string: ${buildColorSchemeFieldList()}.
 - "ui_behavior" must contain exactly: "border_radius_dp" (integer 0-32), "animation_speed" ("slow" | "normal" | "fast" | "reduced_motion"), "contrast_level" ("low" | "normal" | "high"), "elevation_style" ("flat" | "shadowed").
-- "bi_insights" must contain exactly: "persona_label" (string), "confidence_score" (number 0-1), "traits" (string array, max 10), optionally "segment" (string).
+- "bi_insights" must contain exactly: "persona_label" (string), "confidence_score" (number 0-1), "traits" (string array, max 10), "mutation_reason" (string, 1-2 sentences), optionally "segment" (string).
 - Do not add, omit, or rename fields. Do not include palette_id, base_palette_id, base_palette_version, user_id, schema_version, or generated_at — the caller fills those in.
 
 ${OUTPUT_FORMAT_RULE}`;
