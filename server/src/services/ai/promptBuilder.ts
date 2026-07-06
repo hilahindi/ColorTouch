@@ -1,6 +1,7 @@
 import type { AppMetadata, BasePalette } from "../../types/basePalette.types";
 import type { UserAnswers } from "../../types/userAnswers.types";
 import type { Material3ColorScheme } from "../../types/colorScheme.types";
+import { buildQuestionnaireContext } from "../questions/questionsService";
 
 /**
  * Splitting system/user lets callers map directly onto the Claude Messages
@@ -70,17 +71,22 @@ const CONTRAST_RULE = `Accessibility:
 - Every text-on-background pairing (e.g. onPrimary on primary, onSurface on surface) must meet WCAG AA: a contrast ratio of at least ${WCAG_AA_CONTRAST_RATIO}:1.
 - Verify this for both the "light" and "dark" color modes independently.`;
 
-// Placed first, ahead of everything else, and phrased as hard requirements
-// rather than suggestions — earlier prompt revisions let the model treat
-// "stay harmonious with the base identity" as license to return the base
-// colors unchanged. This block exists specifically to override that.
-const ACCESSIBILITY_OVERRIDE_RULES = `CRITICAL INSTRUCTION: You possess EXPLICIT PERMISSION and are REQUIRED to alter the actual HEX color codes from the Base Palette when the user profile demands it. Do NOT simply copy the base colors.
+// Pivoted from an explicit, example-driven rulebook (see git history) to an
+// agentic consultant framing per product direction: trust the model's
+// professional judgment on hue/mood/ui_behavior rather than enumerating
+// if-then mappings. The one holdover from the rulebook era is the bolded
+// sentence inside Technical Integrity — accessibility-relevant signals
+// stopped producing real color changes without an explicit, non-negotiable
+// instruction, the same way contrast already is one below. Cut that if this
+// keeps handling it correctly on its own.
+const CONSULTANT_ROLE = `Role: You are a world-class Color Psychologist and UI/UX Strategist. Your task is to act as a professional consultant who builds the visual identity of an app based on a user's psychological profile.
 
-- For Color Blindness (e.g., Protanopia): You MUST shift problematic colors. Change red/green semantic color roles (such as "error", or any role acting as a success/danger signal) to safe, high-contrast alternatives like blue, orange, or yellow.
-- For Low Vision or Direct Sunlight: You MUST mathematically increase the contrast ratio. Lighten the light-mode colors and darken the dark-mode background colors significantly. Do not just rely on the ui_behavior flags to carry accessibility — the HEX values themselves must change.
-- Accessibility absolutely overrides Brand Identity. If the base primary color is inaccessible for this specific user, CHANGE IT to a compliant HEX code. A personalized palette that is byte-for-byte identical to the base palette's colors is a failure, unless the user profile is a plain "standard" user with no accessibility needs.
-- MANDATORY CONSTRAINT: Your generated HEX codes MUST differ from the input Base Palette HEX codes by at least a significant perceptual margin (delta). If you are adapting for Protanopia or Low Vision, you MUST pick colors that are outside the problematic spectrum of the original palette. You are explicitly allowed to discard the original color identity if it conflicts with accessibility.
-- Include a brief field in bi_insights called "mutation_reason" explaining exactly why the color shifted from the base palette (e.g., "Shifted red to blue for Protanopia contrast"). If a color genuinely did not need to change (e.g. a plain standard user with no accessibility needs), say so explicitly instead of leaving this vague.`;
+How to work:
+- Analyze: Look at the user's questionnaire as a whole narrative. Don't look for keywords; look for the "vibe" and the psychological intent behind their answers. Understand the persona as a human, not just a data point.
+- Professional Decision: Based on your expertise as a color psychologist, decide the best color palette for this specific user. You are the expert — choose the hue, saturation, and balance that will make the user feel comfortable, engaged, or productive within the app.
+- Justification: In the "mutation_reason" field of the JSON output, provide a Design Rationale. Explain clearly why these specific colors are the perfect match for this user's personality, and why they differ from the base palette.
+- Flexibility: You are free to move away from the base palette entirely if that serves the user's psychological needs better. The base palette is just a starting point — your design expertise is the ultimate authority.
+- Technical Integrity: You must ensure the result is a valid Material3 ColorScheme that meets WCAG AA contrast standards (${WCAG_AA_CONTRAST_RATIO}:1). **If anything in the questionnaire signals a visual or accessibility sensitivity (e.g. sensitivity to strong colors, low-light environments), treat that with the same non-negotiable weight as the contrast ratio — it is a technical requirement, not a stylistic option.**`;
 
 function buildColorSchemeFieldList(): string {
   return MATERIAL3_COLOR_FIELDS.map((f) => `"${f}"`).join(", ");
@@ -107,14 +113,8 @@ ${JSON.stringify({ app_metadata: appMetadata }, null, 2)}`;
   return { system, user };
 }
 
-function describeUiBehaviorGuidance(userAnswers: UserAnswers): string {
-  return `UI behavior guidance:
-- Map the user's traits below to ui_behavior. These are examples of the pattern to apply, not an exhaustive lookup table — use judgment for traits that don't literally match:
-  - Anxious, formal, professional, or serious traits -> smaller border_radius_dp (sharp corners, e.g. 0-6), animation_speed "slow" or "reduced_motion", elevation_style "flat".
-  - Young, playful, creative, or vibrant traits -> larger border_radius_dp (rounded corners, e.g. 16-28), animation_speed "fast", elevation_style "shadowed".
-  - motion_sensitivity "high" must always force animation_speed to "reduced_motion", regardless of other traits.
-  - contrast_level should be "high" whenever the user's traits suggest a need for stronger legibility (e.g. accessibility-related traits); otherwise "normal".
-- bi_insights.confidence_score must reflect genuine certainty (0-1) based on how clearly the traits imply a persona — do not default to a fixed value.`;
+function describeUiBehaviorGuidance(): string {
+  return `Apply the same professional judgment to ui_behavior as you do to color choice — infer border_radius_dp, animation_speed, contrast_level, and elevation_style from the whole persona, not from isolated keywords. Each should feel like a deliberate design decision consistent with the mood of the palette you chose, not a default. bi_insights.confidence_score should reflect your genuine certainty (0-1) — more questionnaire answers (especially the optional deep-dive ones) generally supports higher confidence than the 5 core answers alone.`;
 }
 
 export function buildPersonalizedPalettePrompt(
@@ -122,26 +122,26 @@ export function buildPersonalizedPalettePrompt(
   userAnswers: UserAnswers
 ): AiPrompt {
   const context = buildPromptContext(basePalette);
+  const questionnaireResponses = buildQuestionnaireContext(userAnswers);
 
-  const system = `${ACCESSIBILITY_OVERRIDE_RULES}
+  const system = `${CONSULTANT_ROLE}
 
-You are a Material3 color system designer for the ColorTouch SDK.
-Given an existing BasePalette (trimmed to its key seed colors) and an end user's in-app preference questionnaire, derive a PersonalizedPalette: a full light/dark Material3 ColorScheme plus ui_behavior and bi_insights, tailored to that user. Stay harmonious with the base app identity only where doing so doesn't conflict with the accessibility requirements above — accessibility wins every conflict.
+Given an existing BasePalette (trimmed to its key seed colors) and the end user's full questionnaire responses (each entry is the original question text paired with their chosen answer), derive a PersonalizedPalette: a full light/dark Material3 ColorScheme plus ui_behavior and bi_insights.
 
 ${CONTRAST_RULE}
 
-${describeUiBehaviorGuidance(userAnswers)}
+${describeUiBehaviorGuidance()}
 
-Schema:
+Output schema (strict):
 - "colors.light" and "colors.dark" must each contain exactly these fields, each a "#RRGGBB" hex string: ${buildColorSchemeFieldList()}.
 - "ui_behavior" must contain exactly: "border_radius_dp" (integer 0-32), "animation_speed" ("slow" | "normal" | "fast" | "reduced_motion"), "contrast_level" ("low" | "normal" | "high"), "elevation_style" ("flat" | "shadowed").
-- "bi_insights" must contain exactly: "persona_label" (string), "confidence_score" (number 0-1), "traits" (string array, max 10), "mutation_reason" (string, 1-2 sentences), optionally "segment" (string).
+- "bi_insights" must contain exactly: "persona_label" (string — a short, human-readable persona name synthesized from your analysis), "confidence_score" (number 0-1), "traits" (string array, max 10), "mutation_reason" (string — your Design Rationale: 1-3 sentences explaining why these colors are the right match for this person, and why they differ from the base palette), optionally "segment" (string).
 - Do not add, omit, or rename fields. Do not include palette_id, base_palette_id, base_palette_version, user_id, schema_version, or generated_at — the caller fills those in.
 
 ${OUTPUT_FORMAT_RULE}`;
 
   const user = `Derive a PersonalizedPalette from this context:
-${JSON.stringify({ base_context: context, user_answers: userAnswers }, null, 2)}`;
+${JSON.stringify({ base_context: context, questionnaire_responses: questionnaireResponses }, null, 2)}`;
 
   return { system, user };
 }

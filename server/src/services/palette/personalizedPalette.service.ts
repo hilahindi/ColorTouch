@@ -6,6 +6,7 @@ import type { UserAnswersRepository } from "../../repositories/userAnswersReposi
 import type { PersonalizedPaletteRepository } from "../../repositories/personalizedPaletteRepository";
 import type { PersonalizedPaletteCache } from "../../cache/personalizedPaletteCache";
 import { validatePersonalizedPalette } from "../../validation/schemaValidator";
+import { buildPersonalizedPalettePrompt, type AiPrompt } from "../ai/promptBuilder";
 
 export class BasePaletteNotFoundError extends Error {
   constructor(developerId: string) {
@@ -55,6 +56,7 @@ export function createPersonalizedPaletteService(
     developerId: string,
     userId: string,
     userAnswers: UserAnswers,
+    options: { debug?: boolean; systemPromptOverride?: string } = {},
   ): Promise<PersonalizedPalette> {
     // The passed-in answers are this user's latest submission of record —
     // persist them regardless of whether the cache below is a hit or miss.
@@ -66,18 +68,24 @@ export function createPersonalizedPaletteService(
       throw new BasePaletteNotFoundError(developerId);
     }
 
-    const cached = await personalizedPaletteCache.get(userId);
-    if (
-      cached &&
-      isFreshForBase(cached, basePalette.palette_id, basePalette.version)
-    ) {
-      return cached;
+    // Debug/prompt-tuning calls always regenerate — returning a stale cached
+    // palette would make experimenting with a new prompt look like it did
+    // nothing.
+    if (!options.debug) {
+      const cached = await personalizedPaletteCache.get(userId);
+      if (
+        cached &&
+        isFreshForBase(cached, basePalette.palette_id, basePalette.version)
+      ) {
+        return cached;
+      }
     }
 
     const generated = await aiProvider.generatePersonalizedPalette({
       basePalette,
       userId,
       userAnswers,
+      systemPromptOverride: options.systemPromptOverride,
     });
 
     // aiProvider.generatePersonalizedPalette() already validates internally,
@@ -102,5 +110,25 @@ export function createPersonalizedPaletteService(
     return generated;
   }
 
-  return { getOrGeneratePersonalizedPalette };
+  /**
+   * Debug-only: reconstructs the exact prompt that would be (or was) sent to
+   * the AI provider for this developerId/userAnswers pair, without calling
+   * the provider itself. buildPersonalizedPalettePrompt is a pure function of
+   * (basePalette, userAnswers), so this is guaranteed identical to what
+   * getOrGeneratePersonalizedPalette actually sends — not a re-implementation
+   * that could drift from it. Returns null if there's no BasePalette yet for
+   * this developer (nothing to build a prompt against).
+   */
+  async function buildDebugPrompt(
+    developerId: string,
+    userAnswers: UserAnswers,
+    systemPromptOverride?: string,
+  ): Promise<AiPrompt | null> {
+    const basePalette = await basePaletteRepository.findByDeveloper(developerId);
+    if (!basePalette) return null;
+    const prompt = buildPersonalizedPalettePrompt(basePalette, userAnswers);
+    return systemPromptOverride ? { ...prompt, system: systemPromptOverride } : prompt;
+  }
+
+  return { getOrGeneratePersonalizedPalette, buildDebugPrompt };
 }

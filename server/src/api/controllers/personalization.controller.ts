@@ -14,6 +14,13 @@ interface PersonalizedPaletteRequestBody {
   developerId: string;
   userId: string;
   userAnswers: UserAnswers;
+  /** Debug tooling only (the web simulator's "AI Request" column) — echoes
+   * the exact prompt sent to the AI provider back in the response under
+   * `debug.prompt`. Never set by the real SDK. */
+  debug?: boolean;
+  /** Prompt-tuning tooling only — see GeneratePersonalizedPaletteInput's
+   * systemPromptOverride. Ignored unless `debug` is also true. */
+  promptOverride?: { system?: string };
 }
 
 /**
@@ -29,16 +36,30 @@ export function createPersonalizationController(
     req: Request,
     res: Response,
   ): Promise<void> {
-    const { developerId, userId, userAnswers } =
+    const { developerId, userId, userAnswers, debug, promptOverride } =
       req.body as PersonalizedPaletteRequestBody;
+    // Only meaningful when debug is also on — guards against a stray field
+    // silently altering real SDK-driven generations.
+    const systemPromptOverride = debug ? promptOverride?.system : undefined;
+
+    // Best-effort: only for the debug UI, never lets a debug-echo failure
+    // affect the real response the SDK depends on.
+    async function debugPayload(): Promise<Record<string, unknown>> {
+      if (!debug) return {};
+      const prompt = await service
+        .buildDebugPrompt(developerId, userAnswers, systemPromptOverride)
+        .catch(() => null);
+      return prompt ? { debug: { prompt } } : {};
+    }
 
     try {
       const palette = await service.getOrGeneratePersonalizedPalette(
         developerId,
         userId,
         userAnswers,
+        { debug, systemPromptOverride },
       );
-      res.status(200).json(palette);
+      res.status(200).json({ ...palette, ...(await debugPayload()) });
     } catch (err) {
       if (err instanceof BasePaletteNotFoundError) {
         res
@@ -55,6 +76,7 @@ export function createPersonalizationController(
           error: "AiGenerationFailed",
           message:
             "Personalized palette generation is temporarily unavailable. Please retry shortly.",
+          ...(await debugPayload()),
         });
         return;
       }
@@ -66,6 +88,7 @@ export function createPersonalizationController(
         res.status(500).json({
           error: "SchemaValidationFailed",
           message: "Generated palette failed internal validation.",
+          ...(await debugPayload()),
         });
         return;
       }
@@ -74,6 +97,7 @@ export function createPersonalizationController(
         error: "InternalError",
         message:
           "An unexpected error occurred while generating the personalized palette.",
+        ...(await debugPayload()),
       });
     }
   }

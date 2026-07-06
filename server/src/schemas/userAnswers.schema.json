@@ -2,32 +2,28 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://colortouch.dev/schemas/user-answers.json",
   "title": "UserAnswers",
-  "description": "End user's in-app preference questionnaire, submitted by the SDK when requesting a PersonalizedPalette.",
+  "description": "End user's in-app questionnaire responses, submitted by the SDK when requesting a PersonalizedPalette. Each response is a {question_id, answer_value} pair — see server/src/data/questions.json for the canonical question set (5 core + 10 deep-dive). Whether all 5 core questions were answered is enforced at runtime in questionsService.ts, not by this schema — ajv can't cleanly express 'these specific array elements must be present' against a dynamic question set.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["user_id", "visual_preference", "tone_of_voice", "motion_sensitivity", "personality_traits"],
+  "required": ["user_id", "responses"],
   "properties": {
     "user_id": {
       "type": "string",
       "format": "uuid"
     },
-    "visual_preference": {
-      "type": "string",
-      "enum": ["minimal", "vibrant", "professional", "playful"]
-    },
-    "tone_of_voice": {
-      "type": "string",
-      "enum": ["formal", "casual", "playful", "serious"]
-    },
-    "motion_sensitivity": {
-      "type": "string",
-      "enum": ["none", "mild", "high"]
-    },
-    "personality_traits": {
+    "responses": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1, "maxLength": 40 },
-      "maxItems": 10,
-      "uniqueItems": true
+      "minItems": 5,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question_id", "answer_value"],
+        "properties": {
+          "question_id": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "answer_value": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      }
     }
   }
 }

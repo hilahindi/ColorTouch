@@ -1,17 +1,18 @@
-export type VisualPreference = "minimal" | "vibrant" | "professional" | "playful";
-export type ToneOfVoice = "formal" | "casual" | "playful" | "serious";
-export type MotionSensitivity = "none" | "mild" | "high";
+export interface QuestionResponse {
+  question_id: string;
+  answer_value: string;
+}
 
 /**
- * End user's in-app preference questionnaire — distinct from the developer's
- * AppMetadata (app_metadata) which describes the app, not the individual user.
+ * End user's in-app questionnaire responses — a flexible list of
+ * {question_id, answer_value} pairs rather than fixed named fields, since the
+ * actual question set (see server/src/data/questions.json) is 5 mandatory +
+ * 10 optional questions and can grow without a schema/type change here.
+ * The 5 core question ids being present is enforced at runtime in
+ * questionsService.ts, not by this type or by ajv — see the comment on
+ * userAnswers.schema.json for why.
  */
 export interface UserAnswers {
   user_id: string;
-  visual_preference: VisualPreference;
-  tone_of_voice: ToneOfVoice;
-  /** Drives ui_behavior.animation_speed — "high" should bias toward reduced_motion. */
-  motion_sensitivity: MotionSensitivity;
-  /** Free-form descriptors from the questionnaire, e.g. "anxious", "young", "creative". */
-  personality_traits: string[];
+  responses: QuestionResponse[];
 }

@@ -1,0 +1,14 @@
+node_modules/
+
+# Android / Gradle (colortouch-sdk, sample-app)
+*.iml
+.gradle/
+/local.properties
+.idea/
+.kotlin/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab

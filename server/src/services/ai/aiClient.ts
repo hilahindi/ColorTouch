@@ -29,6 +29,12 @@ export interface GeneratePersonalizedPaletteInput {
   basePalette: BasePalette;
   userId: string;
   userAnswers: UserAnswers;
+  /** Debug/prompt-tuning tooling only — replaces the generated system prompt
+   * before calling the AI provider. The user message (real base palette +
+   * questionnaire context) is unchanged, so an experiment stays grounded in
+   * real data and only varies the instructions. Ignored in mock mode, since
+   * mock mode never reads the prompt at all. */
+  systemPromptOverride?: string;
 }
 
 export interface AiProvider {
@@ -289,10 +295,13 @@ export class GroqAiProvider implements AiProvider {
     }
 
     return withRetry("generatePersonalizedPalette", async () => {
-      const prompt = buildPersonalizedPalettePrompt(
+      const builtPrompt = buildPersonalizedPalettePrompt(
         input.basePalette,
         input.userAnswers,
       );
+      const prompt: AiPrompt = input.systemPromptOverride
+        ? { ...builtPrompt, system: input.systemPromptOverride }
+        : builtPrompt;
       const parsed = (await callGroq(prompt)) as {
         colors: ColorModes;
         ui_behavior: UiBehavior;

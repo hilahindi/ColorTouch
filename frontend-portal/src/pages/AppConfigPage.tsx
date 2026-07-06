@@ -1,10 +1,9 @@
 import { useState } from "react";
-import PalettePreview, { type BasePalette } from "./PalettePreview";
-import PersonalizationSimulator from "./PersonalizationSimulator";
+import PalettePreview, { type BasePalette } from "../components/PalettePreview";
 
 const ONBOARDING_ENDPOINT = "http://localhost:3000/developer/onboarding";
 
-// Placeholder until real developer auth exists for the portal.
+// Placeholder until real developer auth exists for the dashboard.
 const DEVELOPER_ID = "11111111-1111-1111-1111-111111111111";
 
 const MIN_PERSONALITY_TAGS = 1;
@@ -79,27 +78,21 @@ function isFormValid(form: FormState): boolean {
   );
 }
 
-export default function OnboardingWizard() {
+export default function AppConfigPage() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [paletteData, setPaletteData] = useState<BasePalette | null>(null);
 
-  const personalityTagsAtLimit =
-    form.personalityTags.length >= MAX_PERSONALITY_TAGS;
+  const personalityTagsAtLimit = form.personalityTags.length >= MAX_PERSONALITY_TAGS;
 
   function togglePersonalityTag(tag: string) {
     setForm((prev) => {
       const isSelected = prev.personalityTags.includes(tag);
       if (isSelected) {
-        return {
-          ...prev,
-          personalityTags: prev.personalityTags.filter((t) => t !== tag),
-        };
+        return { ...prev, personalityTags: prev.personalityTags.filter((t) => t !== tag) };
       }
-      if (prev.personalityTags.length >= MAX_PERSONALITY_TAGS) {
-        return prev;
-      }
+      if (prev.personalityTags.length >= MAX_PERSONALITY_TAGS) return prev;
       return { ...prev, personalityTags: [...prev.personalityTags, tag] };
     });
   }
@@ -119,16 +112,10 @@ export default function OnboardingWizard() {
           developerId: DEVELOPER_ID,
           appMetadata: {
             category: form.category,
-            ...(form.category === "other"
-              ? { custom_category: form.customCategory.trim() }
-              : {}),
+            ...(form.category === "other" ? { custom_category: form.customCategory.trim() } : {}),
             ...(form.appName.trim() ? { app_name: form.appName.trim() } : {}),
-            ...(form.appDescription.trim()
-              ? { app_description: form.appDescription.trim() }
-              : {}),
-            ...(form.targetAudience.trim()
-              ? { target_audience: form.targetAudience.trim() }
-              : {}),
+            ...(form.appDescription.trim() ? { app_description: form.appDescription.trim() } : {}),
+            ...(form.targetAudience.trim() ? { target_audience: form.targetAudience.trim() } : {}),
             personality_tags: form.personalityTags,
             kpis: [form.kpi],
           },
@@ -143,82 +130,55 @@ export default function OnboardingWizard() {
       }
 
       const body = await response.json().catch(() => null);
-      throw new Error(
-        body?.message ?? `Request failed with status ${response.status}`,
-      );
+      throw new Error(body?.message ?? `Request failed with status ${response.status}`);
     } catch (err) {
       setStatus("error");
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.",
-      );
+      setErrorMessage(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
   }
 
   const isLoading = status === "loading";
+  const inputClass =
+    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-6 p-4 sm:p-6">
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl shadow-slate-200/60 ring-1 ring-slate-900/5 p-6 sm:p-10">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
-            Onboard Your App
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-slate-500">
-            Tell us about your app and we'll generate a base color palette for
-            it.
-          </p>
-        </div>
-
+    <div className="flex flex-col gap-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <form onSubmit={handleSubmit} className="space-y-8">
           <div>
-            <label
-              htmlFor="app-name"
-              className="block text-sm font-medium text-slate-700 mb-2"
-            >
+            <label htmlFor="app-name" className="mb-2 block text-sm font-medium text-slate-700">
               App Name
             </label>
             <input
               id="app-name"
               type="text"
               value={form.appName}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, appName: e.target.value }))
-              }
+              onChange={(e) => setForm((prev) => ({ ...prev, appName: e.target.value }))}
               disabled={isLoading}
               placeholder="e.g. StudentFlow"
               maxLength={60}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="app-description"
-              className="block text-sm font-medium text-slate-700 mb-2"
-            >
+            <label htmlFor="app-description" className="mb-2 block text-sm font-medium text-slate-700">
               App Description
             </label>
             <textarea
               id="app-description"
               value={form.appDescription}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, appDescription: e.target.value }))
-              }
+              onChange={(e) => setForm((prev) => ({ ...prev, appDescription: e.target.value }))}
               disabled={isLoading}
               placeholder="e.g. StudentFlow helps university students organize assignments, track deadlines, and study together in shared groups."
               maxLength={1000}
               rows={3}
-              className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`resize-y ${inputClass}`}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="category"
-              className="block text-sm font-medium text-slate-700 mb-2"
-            >
+            <label htmlFor="category" className="mb-2 block text-sm font-medium text-slate-700">
               App Category
             </label>
             <select
@@ -233,7 +193,7 @@ export default function OnboardingWizard() {
                 }));
               }}
               disabled={isLoading}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className={inputClass}
             >
               <option value="" disabled>
                 Select a category…
@@ -248,46 +208,41 @@ export default function OnboardingWizard() {
               <input
                 type="text"
                 value={form.customCategory}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, customCategory: e.target.value }))
-                }
+                onChange={(e) => setForm((prev) => ({ ...prev, customCategory: e.target.value }))}
                 disabled={isLoading}
                 placeholder="Please specify your app category"
                 maxLength={50}
-                className="mt-2.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`mt-2.5 ${inputClass}`}
               />
             )}
           </div>
 
           <div>
-            <div className="flex items-baseline justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700">
-                Brand Personality
-              </label>
+            <div className="mb-2 flex items-baseline justify-between">
+              <label className="block text-sm font-medium text-slate-700">Brand Personality</label>
               <span className="text-xs text-slate-400">
                 {form.personalityTags.length}/{MAX_PERSONALITY_TAGS} selected
               </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {PERSONALITY_TAGS.map((tag) => {
                 const checked = form.personalityTags.includes(tag);
-                const disabled =
-                  isLoading || (!checked && personalityTagsAtLimit);
+                const disabled = isLoading || (!checked && personalityTagsAtLimit);
                 return (
                   <label
                     key={tag}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
                       checked
-                        ? "border-violet-500 bg-violet-50 text-violet-700"
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
                         : "border-slate-200 text-slate-600 hover:border-slate-300"
-                    } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                    } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       disabled={disabled}
                       onChange={() => togglePersonalityTag(tag)}
-                      className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500/30"
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
                     />
                     {tag}
                   </label>
@@ -295,47 +250,36 @@ export default function OnboardingWizard() {
               })}
             </div>
             <p className="mt-2 text-xs text-slate-400">
-              Choose between {MIN_PERSONALITY_TAGS} and {MAX_PERSONALITY_TAGS}{" "}
-              traits.
+              Choose between {MIN_PERSONALITY_TAGS} and {MAX_PERSONALITY_TAGS} traits.
             </p>
           </div>
 
           <div>
-            <label
-              htmlFor="target-audience"
-              className="block text-sm font-medium text-slate-700 mb-2"
-            >
+            <label htmlFor="target-audience" className="mb-2 block text-sm font-medium text-slate-700">
               Target Audience
             </label>
             <input
               id="target-audience"
               type="text"
               value={form.targetAudience}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, targetAudience: e.target.value }))
-              }
+              onChange={(e) => setForm((prev) => ({ ...prev, targetAudience: e.target.value }))}
               disabled={isLoading}
               placeholder="e.g. University students juggling coursework and group projects"
               maxLength={200}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="kpi"
-              className="block text-sm font-medium text-slate-700 mb-2"
-            >
+            <label htmlFor="kpi" className="mb-2 block text-sm font-medium text-slate-700">
               Primary KPI
             </label>
             <select
               id="kpi"
               value={form.kpi}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, kpi: e.target.value as Kpi }))
-              }
+              onChange={(e) => setForm((prev) => ({ ...prev, kpi: e.target.value as Kpi }))}
               disabled={isLoading}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className={inputClass}
             >
               <option value="" disabled>
                 Select a KPI…
@@ -363,7 +307,7 @@ export default function OnboardingWizard() {
           <button
             type="submit"
             disabled={!isFormValid(form) || isLoading}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-violet-600/20 transition-colors hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-violet-600"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600"
           >
             {isLoading && (
               <span
@@ -377,14 +321,8 @@ export default function OnboardingWizard() {
       </div>
 
       {paletteData && (
-        <div className="w-full max-w-3xl animate-fade-in">
+        <div className="animate-fade-in">
           <PalettePreview palette={paletteData} />
-        </div>
-      )}
-
-      {paletteData && (
-        <div className="w-full max-w-5xl animate-fade-in">
-          <PersonalizationSimulator basePalette={paletteData} />
         </div>
       )}
     </div>

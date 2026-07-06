@@ -1,6 +1,6 @@
 // Minimal shape of the server's BasePalette response — only the fields this
-// preview actually reads. Kept local since the portal has no shared package
-// with the server yet.
+// preview actually reads. Kept local since the frontend - portal has no
+// shared package with the server yet.
 export interface Material3ColorScheme {
   primary: string;
   secondary: string;
@@ -106,7 +106,7 @@ export default function PalettePreview({
   title = "Generated Base Palette",
 }: PalettePreviewProps) {
   return (
-    <div className="w-full rounded-2xl bg-white p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-900/5 sm:p-8">
+    <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       <h2 className="mb-5 text-center text-lg font-semibold text-slate-900">{title}</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ModeSection title="Light Mode" scheme={palette.colors.light} variant="light" />
