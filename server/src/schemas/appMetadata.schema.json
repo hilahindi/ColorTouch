@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://colortouch.dev/schemas/app-metadata.json",
+  "title": "AppMetadata",
+  "description": "Developer's app questionnaire answers, submitted during onboarding and used to generate a BasePalette.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["category", "personality_tags", "kpis"],
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": [
+        "fintech",
+        "ecommerce",
+        "health_fitness",
+        "social",
+        "productivity",
+        "gaming",
+        "education",
+        "travel",
+        "food",
+        "other"
+      ]
+    },
+    "personality_tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "kpis": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "engagement",
+          "retention",
+          "conversion",
+          "session_length",
+          "onboarding_completion"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}
