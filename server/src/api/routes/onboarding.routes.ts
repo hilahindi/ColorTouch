@@ -29,5 +29,10 @@ export function createOnboardingRouter(controller: OnboardingController): Router
     asyncHandler(controller.onboardDeveloper)
   );
 
+  router.get(
+    "/developer/:developerId/base-palette",
+    asyncHandler(controller.getDefaultPalette)
+  );
+
   return router;
 }

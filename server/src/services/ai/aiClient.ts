@@ -68,6 +68,12 @@ async function withRetry<T>(
       return await attempt();
     } catch (err) {
       lastError = err;
+      // Without this, a failure is invisible until every retry is exhausted
+      // and the caller just sees a generic 503 — no trace of *why* (auth,
+      // rate limit, malformed completion, network) ends up in server logs.
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`--- AI ERROR (${label}, attempt ${tryNumber}/${MAX_RETRY_ATTEMPTS + 1}) ---`);
+      console.error(message);
     }
   }
   throw new AiGenerationError(

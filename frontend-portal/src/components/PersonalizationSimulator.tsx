@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuestions } from "../hooks/useQuestions";
 import QuestionnaireWizard, { isWizardReady, toQuestionResponses } from "./QuestionnaireWizard";
+import { CompactPalettePreview, extractColorModes } from "./PaletteSwatchStrip";
 
 const PERSONALIZATION_ENDPOINT = "http://localhost:3000/personalized-palette";
 
@@ -74,6 +75,7 @@ export default function PersonalizationSimulator() {
 
   const isLoading = status === "loading";
   const ready = isWizardReady(questions, answers);
+  const responseColors = aiResponse ? extractColorModes(aiResponse.body) : null;
 
   async function handleSimulate() {
     setStatus("loading");
@@ -246,9 +248,14 @@ export default function PersonalizationSimulator() {
           <div className="max-h-[32rem] overflow-y-auto px-4 py-3">
             {!aiResponse && <p className="text-xs text-slate-400">Nothing received yet.</p>}
             {aiResponse && (
-              <pre className="whitespace-pre-wrap break-words rounded-lg bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100">
-                {JSON.stringify(aiResponse.body, null, 2)}
-              </pre>
+              <div className="space-y-3">
+                {responseColors && (
+                  <CompactPalettePreview colors={responseColors} title="Personalized Palette" />
+                )}
+                <pre className="whitespace-pre-wrap break-words rounded-lg bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100">
+                  {JSON.stringify(aiResponse.body, null, 2)}
+                </pre>
+              </div>
             )}
           </div>
         </div>

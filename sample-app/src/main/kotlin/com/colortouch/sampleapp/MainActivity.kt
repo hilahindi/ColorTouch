@@ -2,6 +2,7 @@ package com.colortouch.sampleapp
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
@@ -10,32 +11,24 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Assignment
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
@@ -56,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -94,6 +86,16 @@ class MainActivity : ComponentActivity() {
             enableLogging = true,
         )
 
+        // Upgrades the hardcoded DEMO_DEFAULT_PALETTE above to this
+        // developer's actual generated BasePalette once fetched, so the
+        // app's very first run reflects the colors chosen in the dashboard
+        // instead of a generic Material3 baseline — then keeps re-fetching
+        // every 5s so a developer regenerating their base colors in the
+        // dashboard shows up here live, without relaunching the app. No-ops
+        // per tick (keeps whatever default is already showing) if onboarding
+        // hasn't run yet or the server is unreachable.
+        ColorTouchClient.startDefaultPalettePolling(DEMO_DEVELOPER_ID)
+
         setContent {
             MaterialTheme {
                 ColorTouchDemoApp()
@@ -110,10 +112,6 @@ private fun ColorTouchDemoApp() {
     val questions = remember { QuestionsRepository.loadQuestions(context) }
     val coroutineScope = rememberCoroutineScope()
 
-    // One stable per-session user id, reused across resubmits so repeat
-    // calls hit the same cached PersonalizedPalette server-side.
-    val userId = remember { UUID.randomUUID().toString() }
-
     // Sourced from the SDK, not local state — ColorTouchClient owns the
     // saved-personalized-vs-default fallback logic and updates this
     // reactively (fetch success, or resetToDefault()).
@@ -123,8 +121,25 @@ private fun ColorTouchDemoApp() {
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // In-memory only (lost on process death) — fine for a demo app; a real
+    // app would persist this alongside (or instead of) the SDK's own
+    // saved-personalized-palette storage.
+    var favoriteRecipeIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedRecipeId by remember { mutableStateOf<String?>(null) }
+
     MainAppShell(
         palette = currentPalette,
+        favoriteRecipeIds = favoriteRecipeIds,
+        onToggleFavorite = { id ->
+            favoriteRecipeIds = if (id in favoriteRecipeIds) {
+                favoriteRecipeIds - id
+            } else {
+                favoriteRecipeIds + id
+            }
+        },
+        selectedRecipeId = selectedRecipeId,
+        onSelectRecipe = { id -> selectedRecipeId = id },
+        onBackFromRecipe = { selectedRecipeId = null },
         onFabClick = { showQuestionnaire = true },
         onResetToDefault = { coroutineScope.launch { ColorTouchClient.resetToDefault() } },
     )
@@ -139,7 +154,15 @@ private fun ColorTouchDemoApp() {
                 errorMessage = null
                 isSubmitting = true
                 coroutineScope.launch {
-                    when (val result = fetchPersonalizedPalette(userId, responses)) {
+                    // A fresh id per submission, not one stable id per app
+                    // session: the server caches PersonalizedPalette results
+                    // by userId indefinitely (no cache_control.ttl_seconds is
+                    // set), so reusing one id across resubmits would just
+                    // replay the first result even after changing answers.
+                    // Fine for this demo/testing app — a real integrator
+                    // should keep one stable id per actual end user instead.
+                    val submissionUserId = UUID.randomUUID().toString()
+                    when (val result = fetchPersonalizedPalette(submissionUserId, responses)) {
                         is ColorTouchResult.Success -> {
                             // currentPalette updates automatically via the
                             // SDK's StateFlow — no local assignment needed.
@@ -169,23 +192,34 @@ private suspend fun fetchPersonalizedPalette(
 private data class DemoTab(val label: String, val filledIcon: ImageVector, val outlinedIcon: ImageVector)
 
 private val DEMO_TABS = listOf(
-    DemoTab("Home", Icons.Filled.Home, Icons.Outlined.Home),
-    DemoTab("Tasks", Icons.Filled.Assignment, Icons.Outlined.Assignment),
+    DemoTab("Recipes", Icons.Filled.Home, Icons.Outlined.Home),
+    DemoTab("Favorites", Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder),
     DemoTab("Settings", Icons.Filled.Settings, Icons.Outlined.Settings),
 )
 
 /**
- * The productivity-app shell: MediumTopAppBar + NavigationBar + a palette
- * FAB, entirely themed from [palette] (or Material3's own baseline colors
- * when null, i.e. before the first fetch and before any default was
- * registered). [Crossfade] gives a smooth cross-dissolve whenever the color
- * scheme changes instead of an instant cut, and the FAB gets a one-shot
- * scale "pulse" the moment a new palette lands.
+ * The recipe-app shell: MediumTopAppBar + NavigationBar + a palette FAB,
+ * entirely themed from [palette] (or Material3's own baseline colors when
+ * null, i.e. before the first fetch and before any default was registered).
+ * [Crossfade] gives a smooth cross-dissolve whenever the color scheme
+ * changes instead of an instant cut, and the FAB gets a one-shot scale
+ * "pulse" the moment a new palette lands.
+ *
+ * When [selectedRecipeId] is set, this replaces the tabbed content entirely
+ * with a full-screen [RecipeDetailScreen] (own back button, no bottom nav/
+ * FAB) rather than nesting it inside a tab — that's the standard pattern for
+ * a recipe detail view, and keeps the system back button meaningful (see the
+ * [BackHandler] below) instead of fighting a tab-based back stack.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainAppShell(
     palette: PaletteResponse?,
+    favoriteRecipeIds: Set<String>,
+    onToggleFavorite: (String) -> Unit,
+    selectedRecipeId: String?,
+    onSelectRecipe: (String) -> Unit,
+    onBackFromRecipe: () -> Unit,
     onFabClick: () -> Unit,
     onResetToDefault: () -> Unit,
 ) {
@@ -196,7 +230,6 @@ private fun MainAppShell(
     }
 
     var selectedTab by remember { mutableStateOf(0) }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val fabScale = remember { Animatable(1f) }
     LaunchedEffect(palette?.paletteId) {
@@ -206,145 +239,88 @@ private fun MainAppShell(
         }
     }
 
+    BackHandler(enabled = selectedRecipeId != null) { onBackFromRecipe() }
+
     Crossfade(targetState = colorScheme, label = "palette-color-transition") { animatedColorScheme ->
         MaterialTheme(colorScheme = animatedColorScheme) {
-            Scaffold(
-                modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                topBar = {
-                    MediumTopAppBar(
-                        title = {
-                            Text("ColorTouch Demo", fontWeight = FontWeight.SemiBold)
-                        },
-                        colors = TopAppBarDefaults.mediumTopAppBarColors(
+            val selectedRecipe = selectedRecipeId?.let { id -> SAMPLE_RECIPES.find { it.id == id } }
+
+            if (selectedRecipe != null) {
+                RecipeDetailScreen(
+                    recipe = selectedRecipe,
+                    isFavorite = selectedRecipe.id in favoriteRecipeIds,
+                    onToggleFavorite = { onToggleFavorite(selectedRecipe.id) },
+                    onBack = onBackFromRecipe,
+                )
+            } else {
+                Scaffold(
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = {
+                                Text(
+                                    "ColorTouch Recipes",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            },
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        )
+                    },
+                    bottomBar = {
+                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                            DEMO_TABS.forEachIndexed { index, tab ->
+                                val selected = selectedTab == index
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = { selectedTab = index },
+                                    icon = {
+                                        Icon(
+                                            imageVector = if (selected) tab.filledIcon else tab.outlinedIcon,
+                                            contentDescription = tab.label,
+                                        )
+                                    },
+                                    label = { Text(tab.label) },
+                                )
+                            }
+                        }
+                    },
+                    floatingActionButton = {
+                        FloatingActionButton(
+                            onClick = onFabClick,
+                            modifier = Modifier.graphicsLayer(
+                                scaleX = fabScale.value,
+                                scaleY = fabScale.value,
+                            ),
                             containerColor = MaterialTheme.colorScheme.primary,
-                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                        scrollBehavior = scrollBehavior,
-                    )
-                },
-                bottomBar = {
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                        DEMO_TABS.forEachIndexed { index, tab ->
-                            val selected = selectedTab == index
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = { selectedTab = index },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) tab.filledIcon else tab.outlinedIcon,
-                                        contentDescription = tab.label,
-                                    )
-                                },
-                                label = { Text(tab.label) },
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ) {
+                            Icon(Icons.Default.Palette, contentDescription = "Personalize palette")
+                        }
+                    },
+                    floatingActionButtonPosition = FabPosition.End,
+                    containerColor = MaterialTheme.colorScheme.background,
+                ) { innerPadding ->
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        when (selectedTab) {
+                            0 -> RecipesScreen(
+                                favoriteRecipeIds = favoriteRecipeIds,
+                                onToggleFavorite = onToggleFavorite,
+                                onSelectRecipe = onSelectRecipe,
                             )
+                            1 -> FavoritesScreen(
+                                favoriteRecipeIds = favoriteRecipeIds,
+                                onToggleFavorite = onToggleFavorite,
+                                onSelectRecipe = onSelectRecipe,
+                            )
+                            else -> SettingsScreen(onResetToDefault = onResetToDefault)
                         }
                     }
-                },
-                floatingActionButton = {
-                    FloatingActionButton(
-                        onClick = onFabClick,
-                        modifier = Modifier.graphicsLayer(
-                            scaleX = fabScale.value,
-                            scaleY = fabScale.value,
-                        ),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ) {
-                        Icon(Icons.Default.Palette, contentDescription = "Personalize palette")
-                    }
-                },
-                floatingActionButtonPosition = FabPosition.End,
-                containerColor = MaterialTheme.colorScheme.background,
-            ) { innerPadding ->
-                Box(modifier = Modifier.padding(innerPadding)) {
-                    when (selectedTab) {
-                        0 -> HomeScreen(palette = palette)
-                        1 -> DummyTabScreen(label = "Tasks")
-                        else -> SettingsScreen(onResetToDefault = onResetToDefault)
-                    }
                 }
             }
         }
-    }
-}
-
-private data class SampleCard(val icon: ImageVector, val title: String, val subtitle: String)
-
-private val SAMPLE_CARDS = listOf(
-    SampleCard(Icons.Filled.Assignment, "Finish onboarding flow", "3 tasks due today"),
-    SampleCard(Icons.Filled.Star, "Review feedback", "2 new comments"),
-    SampleCard(Icons.Filled.Notifications, "Team stand-up", "Starts in 30 minutes"),
-)
-
-@Composable
-private fun HomeScreen(palette: PaletteResponse?) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-    ) {
-        Text(
-            text = "Welcome back!",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            modifier = Modifier.padding(top = 4.dp, bottom = 28.dp),
-            text = palette?.let { "Personalized for: ${it.biInsights.personaLabel}" }
-                ?: "Tap the palette button to personalize your experience",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-        )
-
-        SAMPLE_CARDS.forEach { card ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(24.dp),
-                // Explicit even though these match Card's own defaults — the
-                // point here is to make the surface/onSurface roles visible,
-                // since that's exactly what this screen exists to demonstrate.
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = card.icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Column(modifier = Modifier.padding(start = 16.dp)) {
-                        Text(
-                            text = card.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Text(
-                            modifier = Modifier.padding(top = 2.dp),
-                            text = card.subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DummyTabScreen(label: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("$label (dummy tab)", style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -371,6 +347,30 @@ private fun SettingsScreen(onResetToDefault: () -> Unit) {
         OutlinedButton(onClick = onResetToDefault) {
             Icon(Icons.Filled.RestartAlt, contentDescription = null)
             Text(modifier = Modifier.padding(start = 8.dp), text = "Reset to Default Palette")
+        }
+
+        Column(
+            modifier = Modifier.padding(top = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+            )
+            Text(
+                modifier = Modifier.padding(top = 8.dp),
+                text = "ColorTouch Recipes · Demo v1.0",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            )
+            Text(
+                modifier = Modifier.padding(top = 2.dp),
+                text = "Every color on screen is generated by the ColorTouch SDK.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

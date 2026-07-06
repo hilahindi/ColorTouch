@@ -40,5 +40,15 @@ export function createOnboardingService(deps: OnboardingServiceDeps) {
     return basePalette;
   }
 
-  return { onboardDeveloper };
+  /**
+   * Looks up the BasePalette already generated for developerId — used to
+   * hand a consuming app its developer's actual colors as its startup
+   * default, instead of a hardcoded fallback baked into the app. Returns
+   * null if onboarding hasn't run yet for this developer.
+   */
+  async function getBasePalette(developerId: string): Promise<BasePalette | null> {
+    return basePaletteRepository.findByDeveloper(developerId);
+  }
+
+  return { onboardDeveloper, getBasePalette };
 }

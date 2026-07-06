@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuestions } from "../hooks/useQuestions";
 import QuestionnaireWizard, { isWizardReady, toQuestionResponses } from "../components/QuestionnaireWizard";
+import PaletteSwatchStrip, { extractColorModes } from "../components/PaletteSwatchStrip";
 
 const PERSONALIZATION_ENDPOINT = "http://localhost:3000/personalized-palette";
 
@@ -28,6 +29,7 @@ export default function PromptTuningPage() {
 
   const ready = isWizardReady(questions, answers);
   const isLoading = status === "loading";
+  const responseColors = aiResponse ? extractColorModes(aiResponse.body) : null;
 
   async function handleTest() {
     setStatus("loading");
@@ -156,9 +158,12 @@ export default function PromptTuningPage() {
           <div className="max-h-[28rem] overflow-y-auto px-4 py-3">
             {!aiResponse && <p className="text-xs text-slate-400">Nothing tested yet.</p>}
             {aiResponse && (
-              <pre className="whitespace-pre-wrap break-words rounded-lg bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100">
-                {JSON.stringify(aiResponse.body, null, 2)}
-              </pre>
+              <div className="space-y-3">
+                {responseColors && <PaletteSwatchStrip colors={responseColors} />}
+                <pre className="whitespace-pre-wrap break-words rounded-lg bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100">
+                  {JSON.stringify(aiResponse.body, null, 2)}
+                </pre>
+              </div>
             )}
           </div>
         </div>

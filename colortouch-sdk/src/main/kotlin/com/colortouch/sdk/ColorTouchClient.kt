@@ -14,10 +14,13 @@ import com.colortouch.sdk.network.UserAnswers
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -130,17 +133,75 @@ object ColorTouchClient {
     }
 
     /**
-     * Registers the developer's bundled fallback palette — e.g. one baked
-     * into the app as a JSON asset, the same way QuestionsRepository bundles
-     * questions.json. Safe to call before or after [initialize]; whichever
-     * runs second will not clobber a palette the other already resolved.
-     * Not persisted to disk — the app is expected to supply the same default
-     * on every launch.
+     * Registers the developer's fallback palette — e.g. one baked into the
+     * app as a JSON asset (the same way QuestionsRepository bundles
+     * questions.json), or the real one fetched via [fetchDefaultPalette].
+     * Safe to call multiple times, e.g. a hardcoded bundled palette first for
+     * an instant startup default, then the developer's real BasePalette once
+     * fetched — the second call upgrades [currentPalette] in place instead of
+     * being ignored, as long as a saved personalized palette hasn't since
+     * taken over. Never clobbers a saved personalized palette.
      */
     fun setDefaultPalette(palette: PaletteResponse) {
+        val previousDefault = defaultPalette
         defaultPalette = palette
-        if (_currentPalette.value == null) {
+        if (_currentPalette.value == null || _currentPalette.value === previousDefault) {
             _currentPalette.value = palette
+        }
+    }
+
+    private suspend fun fetchDefaultPaletteOnce(developerId: String) {
+        val api = api ?: return
+        try {
+            val response = api.getDefaultPalette(developerId)
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                setDefaultPalette(body)
+            }
+        } catch (e: IOException) {
+            // Network error — keep whatever default is already showing.
+        }
+    }
+
+    /**
+     * Fetches this developerId's actual generated BasePalette from the
+     * server and registers it via [setDefaultPalette] — upgrading whatever
+     * fallback (e.g. a hardcoded bundled palette) was set synchronously at
+     * startup to the developer's real colors, without clobbering a saved
+     * personalized palette. Call once, typically right after [initialize].
+     * Runs on the client's own scope, so it's safe to call from a non-suspend
+     * context (e.g. Application.onCreate()). Silently no-ops on failure
+     * (network error, or onboarding hasn't run yet for this developer) —
+     * whatever default is already showing keeps showing.
+     *
+     * A single call only reflects whatever the developer's BasePalette was
+     * at that moment — see [startDefaultPalettePolling] to keep picking up
+     * changes (e.g. the developer re-generating their base colors in the
+     * dashboard) for as long as the app stays open.
+     */
+    fun fetchDefaultPalette(developerId: String) {
+        scope.launch { fetchDefaultPaletteOnce(developerId) }
+    }
+
+    /**
+     * Like [fetchDefaultPalette], but keeps re-fetching every [intervalMs]
+     * for as long as the returned [Job] is active, so a developer changing
+     * their base colors in the dashboard shows up here without needing to
+     * relaunch the app. There's no push/websocket channel from the server —
+     * this is deliberately simple polling, so [intervalMs] trades off
+     * "how quickly a color change is noticed" against request volume; 5s is
+     * a reasonable default for a dev-facing demo, not tuned for production
+     * traffic. Each tick is exactly [fetchDefaultPalette]'s logic (never
+     * clobbers a saved personalized palette), just repeated. Cancel the
+     * returned Job to stop polling — otherwise it runs for the process's
+     * lifetime, same as the rest of this singleton's state.
+     */
+    fun startDefaultPalettePolling(developerId: String, intervalMs: Long = 5_000L): Job {
+        return scope.launch {
+            while (isActive) {
+                fetchDefaultPaletteOnce(developerId)
+                delay(intervalMs)
+            }
         }
     }
 

@@ -5,7 +5,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 /**
  * One answered question: question_id must be a known id from
@@ -72,5 +74,16 @@ interface ColorTouchApi {
     @POST("personalized-palette")
     suspend fun getPersonalizedPalette(
         @Body request: PersonalizedPaletteRequest,
+    ): Response<PaletteResponse>
+
+    /**
+     * Returns 200 + PaletteResponse (the developer's actual generated
+     * BasePalette, wrapped in the same envelope as a personalized result —
+     * see toDefaultPaletteResponse() server-side) or 404 if onboarding
+     * hasn't run yet for this developer.
+     */
+    @GET("developer/{developerId}/base-palette")
+    suspend fun getDefaultPalette(
+        @Path("developerId") developerId: String,
     ): Response<PaletteResponse>
 }

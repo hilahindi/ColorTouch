@@ -22,13 +22,11 @@ const CATEGORIES = [
   { value: "other", label: "Other" },
 ] as const;
 
-const KPIS = [
-  { value: "engagement", label: "Engagement" },
-  { value: "retention", label: "Retention" },
-  { value: "conversion", label: "Conversion" },
-  { value: "session_length", label: "Session Length" },
-  { value: "onboarding_completion", label: "Onboarding Completion" },
-] as const;
+// The server's appMetadata schema still requires a non-empty "kpis" array,
+// but the form no longer asks the developer to pick one — sent as a fixed
+// generic default instead of a UI field, since "engagement" is a reasonable
+// default for any app category and isn't worth a form field on its own.
+const DEFAULT_KPI = "engagement";
 
 const PERSONALITY_TAGS = [
   "Innovative",
@@ -44,7 +42,6 @@ const PERSONALITY_TAGS = [
 ] as const;
 
 type Category = (typeof CATEGORIES)[number]["value"];
-type Kpi = (typeof KPIS)[number]["value"];
 
 type SubmitStatus = "idle" | "loading" | "success" | "error";
 
@@ -54,8 +51,6 @@ interface FormState {
   category: Category | "";
   customCategory: string;
   personalityTags: string[];
-  targetAudience: string;
-  kpi: Kpi | "";
 }
 
 const INITIAL_FORM_STATE: FormState = {
@@ -64,15 +59,12 @@ const INITIAL_FORM_STATE: FormState = {
   category: "",
   customCategory: "",
   personalityTags: [],
-  targetAudience: "",
-  kpi: "",
 };
 
 function isFormValid(form: FormState): boolean {
   return (
     form.category !== "" &&
     (form.category !== "other" || form.customCategory.trim().length > 0) &&
-    form.kpi !== "" &&
     form.personalityTags.length >= MIN_PERSONALITY_TAGS &&
     form.personalityTags.length <= MAX_PERSONALITY_TAGS
   );
@@ -115,9 +107,8 @@ export default function AppConfigPage() {
             ...(form.category === "other" ? { custom_category: form.customCategory.trim() } : {}),
             ...(form.appName.trim() ? { app_name: form.appName.trim() } : {}),
             ...(form.appDescription.trim() ? { app_description: form.appDescription.trim() } : {}),
-            ...(form.targetAudience.trim() ? { target_audience: form.targetAudience.trim() } : {}),
             personality_tags: form.personalityTags,
-            kpis: [form.kpi],
+            kpis: [DEFAULT_KPI],
           },
         }),
       });
@@ -252,44 +243,6 @@ export default function AppConfigPage() {
             <p className="mt-2 text-xs text-slate-400">
               Choose between {MIN_PERSONALITY_TAGS} and {MAX_PERSONALITY_TAGS} traits.
             </p>
-          </div>
-
-          <div>
-            <label htmlFor="target-audience" className="mb-2 block text-sm font-medium text-slate-700">
-              Target Audience
-            </label>
-            <input
-              id="target-audience"
-              type="text"
-              value={form.targetAudience}
-              onChange={(e) => setForm((prev) => ({ ...prev, targetAudience: e.target.value }))}
-              disabled={isLoading}
-              placeholder="e.g. University students juggling coursework and group projects"
-              maxLength={200}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="kpi" className="mb-2 block text-sm font-medium text-slate-700">
-              Primary KPI
-            </label>
-            <select
-              id="kpi"
-              value={form.kpi}
-              onChange={(e) => setForm((prev) => ({ ...prev, kpi: e.target.value as Kpi }))}
-              disabled={isLoading}
-              className={inputClass}
-            >
-              <option value="" disabled>
-                Select a KPI…
-              </option>
-              {KPIS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
           </div>
 
           {status === "error" && (
