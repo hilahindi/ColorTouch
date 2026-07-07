@@ -4,7 +4,7 @@ import type { Submission } from "../components/SubmissionsTable";
 const SUBMISSIONS_ENDPOINT = "http://localhost:3000/analytics/submissions";
 
 // Must match AppConfigPage's DEVELOPER_ID.
-const DEVELOPER_ID = "11111111-1111-1111-1111-111111111111";
+const DEVELOPER_ID = "faf06954-d9cb-4c66-a664-5de881a7b7bf";
 
 /** Fetches this developer's questionnaire submissions once per mount — the
  * dashboard remounts this on every navigation back to it, so that's enough

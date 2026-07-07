@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
  * POST /developer/onboarding) — this demo only fetches a personalized
  * palette, it doesn't run onboarding itself.
  */
-private const val DEMO_DEVELOPER_ID = "11111111-1111-1111-1111-111111111111"
+private const val DEMO_DEVELOPER_ID = "faf06954-d9cb-4c66-a664-5de881a7b7bf"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

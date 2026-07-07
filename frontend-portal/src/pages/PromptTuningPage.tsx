@@ -6,7 +6,7 @@ import PaletteSwatchStrip, { extractColorModes } from "../components/PaletteSwat
 const PERSONALIZATION_ENDPOINT = "http://localhost:3000/personalized-palette";
 
 // Must match AppConfigPage's DEVELOPER_ID.
-const DEVELOPER_ID = "11111111-1111-1111-1111-111111111111";
+const DEVELOPER_ID = "faf06954-d9cb-4c66-a664-5de881a7b7bf";
 
 interface AiPromptDebug {
   system: string;

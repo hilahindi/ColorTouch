@@ -4,7 +4,7 @@ import PalettePreview, { type BasePalette } from "../components/PalettePreview";
 const ONBOARDING_ENDPOINT = "http://localhost:3000/developer/onboarding";
 
 // Placeholder until real developer auth exists for the dashboard.
-const DEVELOPER_ID = "11111111-1111-1111-1111-111111111111";
+const DEVELOPER_ID = "faf06954-d9cb-4c66-a664-5de881a7b7bf";
 
 const MIN_PERSONALITY_TAGS = 1;
 const MAX_PERSONALITY_TAGS = 8;

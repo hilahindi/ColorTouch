@@ -4,7 +4,7 @@ const INSIGHT_ENDPOINT = "http://localhost:3000/analytics/audience-insight";
 
 // Must match AppConfigPage's DEVELOPER_ID — the insight is scoped to the
 // developer whose app metadata and submissions are being analyzed.
-const DEVELOPER_ID = "11111111-1111-1111-1111-111111111111";
+const DEVELOPER_ID = "faf06954-d9cb-4c66-a664-5de881a7b7bf";
 
 interface AudienceInsight {
   target_audience: string;
