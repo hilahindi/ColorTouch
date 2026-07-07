@@ -3,43 +3,41 @@ import { Router } from "express";
 import type { BasePalette } from "../../types/basePalette.types";
 import type { AiProvider } from "../../services/ai/aiClient";
 import { AiGenerationError } from "../../services/ai/aiClient";
-import {
-  getRecentSubmissions,
-  computeSubmissionStats,
-} from "../../services/submissions/submissionsService";
+import type { SubmissionsRepository } from "../../repositories/submissionsRepository";
+import { computeSubmissionStats } from "../../services/submissions/submissionsService";
 
 /**
- * Minimal shape this route needs from the concrete in-memory repositories —
- * deliberately not the BasePaletteRepository/PersonalizedPaletteRepository
- * interfaces, since count()/getStats() are analytics-only conveniences
- * specific to this in-memory MVP stage, not part of the real repository
- * contract every backing store must implement.
+ * Minimal shape this route needs from the concrete repositories —
+ * deliberately not the full BasePaletteRepository/PersonalizedPaletteRepository
+ * interfaces, since count()/getStats() are analytics-only conveniences, not
+ * part of the real repository contract every backing store must implement.
  */
 interface AnalyticsSources {
   basePaletteRepository: {
-    count(): number;
+    count(): Promise<number>;
     findByDeveloper(developerId: string): Promise<BasePalette | null>;
   };
   personalizedPaletteRepository: {
-    getStats(): { totalGenerations: number; uniqueUsers: number; repeatUsers: number };
+    getStats(): Promise<{ totalGenerations: number; uniqueUsers: number; repeatUsers: number }>;
   };
+  submissionsRepository: SubmissionsRepository;
   aiProvider: AiProvider;
 }
 
 /**
- * Every number here is honestly computed from real in-memory state — no
+ * Every number here is honestly computed from the database — no
  * placeholder/fabricated stats. "Personalization Rate" and "Retention" use
  * the labels the dashboard asks for, but are precisely defined in the
- * response so they aren't mistaken for a real product-analytics pipeline:
- * this resets on every server restart and only reflects this process's data.
+ * response so they aren't mistaken for a more sophisticated product-analytics
+ * pipeline than this actually is.
  */
 export function createAnalyticsRouter(sources: AnalyticsSources): Router {
   const router = Router();
 
-  router.get("/analytics", (_req, res) => {
-    const appsOnboarded = sources.basePaletteRepository.count();
+  router.get("/analytics", async (_req, res) => {
+    const appsOnboarded = await sources.basePaletteRepository.count();
     const { totalGenerations, uniqueUsers, repeatUsers } =
-      sources.personalizedPaletteRepository.getStats();
+      await sources.personalizedPaletteRepository.getStats();
 
     const personalizationRate = appsOnboarded > 0 ? totalGenerations / appsOnboarded : 0;
     const retentionRate = uniqueUsers > 0 ? repeatUsers / uniqueUsers : 0;
@@ -63,9 +61,10 @@ export function createAnalyticsRouter(sources: AnalyticsSources): Router {
   // One row per completed questionnaire (Simulator, Prompt Tuning, and the
   // real SDK all funnel through the same personalization call) — the
   // dashboard's submissions table and pie charts render straight off this.
-  router.get("/analytics/submissions", (req, res) => {
+  router.get("/analytics/submissions", async (req, res) => {
     const developerId = typeof req.query.developerId === "string" ? req.query.developerId : undefined;
-    res.status(200).json({ submissions: getRecentSubmissions(developerId) });
+    const submissions = await sources.submissionsRepository.getRecent(developerId);
+    res.status(200).json({ submissions });
   });
 
   // AI-generated "who is this app for, and what does it provide" analysis,
@@ -87,7 +86,7 @@ export function createAnalyticsRouter(sources: AnalyticsSources): Router {
       return;
     }
 
-    const stats = computeSubmissionStats(getRecentSubmissions(developerId));
+    const stats = computeSubmissionStats(await sources.submissionsRepository.getRecent(developerId));
 
     try {
       const insight = await sources.aiProvider.generateAudienceInsight({

@@ -3,6 +3,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 
+import { connectMongo } from "./db/mongoClient";
 import { GroqAiProvider } from "./services/ai/aiClient";
 import { createOnboardingService } from "./services/palette/onboarding.service";
 import { createPersonalizedPaletteService } from "./services/palette/personalizedPalette.service";
@@ -15,72 +16,21 @@ import { createAnalyticsRouter } from "./api/routes/analytics.routes";
 import { createLogsRouter } from "./api/routes/logs.routes";
 import { recordLog } from "./services/logs/logsService";
 
-import type { BasePaletteRepository } from "./repositories/basePaletteRepository";
-import type { UserAnswersRepository } from "./repositories/userAnswersRepository";
-import type { PersonalizedPaletteRepository } from "./repositories/personalizedPaletteRepository";
+import { MongoBasePaletteRepository } from "./repositories/mongoBasePaletteRepository";
+import { MongoUserAnswersRepository } from "./repositories/mongoUserAnswersRepository";
+import { MongoPersonalizedPaletteRepository } from "./repositories/mongoPersonalizedPaletteRepository";
+import { MongoSubmissionsRepository } from "./repositories/mongoSubmissionsRepository";
 import type { PersonalizedPaletteCache } from "./cache/personalizedPaletteCache";
-import type { BasePalette } from "./types/basePalette.types";
 import type { PersonalizedPalette } from "./types/personalizedPalette.types";
-import type { UserAnswers } from "./types/userAnswers.types";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const PORTAL_ORIGIN = process.env.PORTAL_ORIGIN ?? "http://localhost:5173";
 
-// --- In-memory adapters --------------------------------------------------
-// Stand-ins for a real DB/Redis until those exist. Data only lives for this
-// process's lifetime — fine for local development, not for production.
-
-class InMemoryBasePaletteRepository implements BasePaletteRepository {
-  private readonly byDeveloperId = new Map<string, BasePalette>();
-
-  async findByDeveloper(developerId: string): Promise<BasePalette | null> {
-    return this.byDeveloperId.get(developerId) ?? null;
-  }
-
-  async save(basePalette: BasePalette): Promise<void> {
-    this.byDeveloperId.set(basePalette.developer_id, basePalette);
-  }
-
-  // Not part of BasePaletteRepository — analytics-only, specific to this
-  // in-memory MVP stage. A real repo would back this with a COUNT query.
-  count(): number {
-    return this.byDeveloperId.size;
-  }
-}
-
-class InMemoryUserAnswersRepository implements UserAnswersRepository {
-  private readonly byUserId = new Map<string, UserAnswers>();
-
-  async save(userAnswers: UserAnswers): Promise<void> {
-    this.byUserId.set(userAnswers.user_id, userAnswers);
-  }
-}
-
-class InMemoryPersonalizedPaletteRepository implements PersonalizedPaletteRepository {
-  private readonly byPaletteId = new Map<string, PersonalizedPalette>();
-  private readonly generationCountByUserId = new Map<string, number>();
-
-  async save(palette: PersonalizedPalette): Promise<void> {
-    this.byPaletteId.set(palette.palette_id, palette);
-    this.generationCountByUserId.set(
-      palette.user_id,
-      (this.generationCountByUserId.get(palette.user_id) ?? 0) + 1,
-    );
-  }
-
-  // Not part of PersonalizedPaletteRepository — analytics-only, specific to
-  // this in-memory MVP stage. "Repeat" = a user who generated more than once
-  // this process's lifetime; this is a session stat, not real cross-session
-  // retention (there's no persistence or session tracking to measure that).
-  getStats(): { totalGenerations: number; uniqueUsers: number; repeatUsers: number } {
-    const counts = [...this.generationCountByUserId.values()];
-    return {
-      totalGenerations: this.byPaletteId.size,
-      uniqueUsers: this.generationCountByUserId.size,
-      repeatUsers: counts.filter((count) => count > 1).length,
-    };
-  }
-}
+// --- In-memory cache -------------------------------------------------------
+// Only the fast-path read cache stays in-memory (Redis is the intended real
+// backing store per personalizedPaletteCache.ts's own comments — not set up
+// yet). Losing this on restart just means the next read recomputes/refetches
+// from Mongo; it isn't a data-loss concern the way the repositories were.
 
 interface CacheEntry {
   palette: PersonalizedPalette;
@@ -110,64 +60,82 @@ class InMemoryPersonalizedPaletteCache implements PersonalizedPaletteCache {
 
 // --- Composition root -----------------------------------------------------
 
-const aiProvider = new GroqAiProvider();
-const basePaletteRepository = new InMemoryBasePaletteRepository();
-const userAnswersRepository = new InMemoryUserAnswersRepository();
-const personalizedPaletteRepository = new InMemoryPersonalizedPaletteRepository();
-const personalizedPaletteCache = new InMemoryPersonalizedPaletteCache();
+async function main(): Promise<void> {
+  const db = await connectMongo();
 
-const onboardingService = createOnboardingService({
-  aiProvider,
-  basePaletteRepository,
-});
+  const aiProvider = new GroqAiProvider();
+  const basePaletteRepository = new MongoBasePaletteRepository(db);
+  const userAnswersRepository = new MongoUserAnswersRepository(db);
+  const personalizedPaletteRepository = new MongoPersonalizedPaletteRepository(db);
+  const submissionsRepository = new MongoSubmissionsRepository(db);
+  const personalizedPaletteCache = new InMemoryPersonalizedPaletteCache();
 
-const personalizedPaletteService = createPersonalizedPaletteService({
-  aiProvider,
-  basePaletteRepository,
-  userAnswersRepository,
-  personalizedPaletteRepository,
-  personalizedPaletteCache,
-});
-
-const onboardingController = createOnboardingController(onboardingService);
-const personalizationController = createPersonalizationController(personalizedPaletteService);
-
-const app = express();
-
-app.use(cors({ origin: PORTAL_ORIGIN }));
-app.use(express.json());
-
-// System Logs feed: records every request except polling of /logs itself
-// (that would just spam the feed with its own reads).
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on("finish", () => {
-    if (req.path === "/logs") return;
-    recordLog({
-      timestamp: new Date().toISOString(),
-      method: req.method,
-      path: req.path,
-      status: res.statusCode,
-      duration_ms: Date.now() - start,
-    });
+  const onboardingService = createOnboardingService({
+    aiProvider,
+    basePaletteRepository,
   });
-  next();
-});
 
-// Mounted at root: onboarding.routes.ts already defines the full
-// "/developer/onboarding" path, and the portal is hardcoded to call
-// http://localhost:3000/developer/onboarding with no prefix.
-app.use(createOnboardingRouter(onboardingController));
-app.use(createPersonalizationRouter(personalizationController));
-app.use(createQuestionsRouter());
-app.use(createAnalyticsRouter({ basePaletteRepository, personalizedPaletteRepository, aiProvider }));
-app.use(createLogsRouter());
+  const personalizedPaletteService = createPersonalizedPaletteService({
+    aiProvider,
+    basePaletteRepository,
+    userAnswersRepository,
+    personalizedPaletteRepository,
+    personalizedPaletteCache,
+    submissionsRepository,
+  });
 
-app.listen(PORT, () => {
-  // AiClient.ts's isMockMode() gates on NODE_ENV !== "production" — this line
-  // exists so "why am I getting mock data" is answered by the terminal
-  // instead of by re-reading aiClient.ts. Use `npm run dev:live` for real Groq calls.
-  const aiMode = process.env.NODE_ENV === "production" ? "LIVE (Groq)" : "MOCK (fixture data)";
-  console.log(`AI provider mode: ${aiMode} — NODE_ENV="${process.env.NODE_ENV ?? "undefined"}"`);
-  console.log(`ColorTouch server listening on http://localhost:${PORT}`);
+  const onboardingController = createOnboardingController(onboardingService);
+  const personalizationController = createPersonalizationController(personalizedPaletteService);
+
+  const app = express();
+
+  app.use(cors({ origin: PORTAL_ORIGIN }));
+  app.use(express.json());
+
+  // System Logs feed: records every request except polling of /logs itself
+  // (that would just spam the feed with its own reads).
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      if (req.path === "/logs") return;
+      recordLog({
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        duration_ms: Date.now() - start,
+      });
+    });
+    next();
+  });
+
+  // Mounted at root: onboarding.routes.ts already defines the full
+  // "/developer/onboarding" path, and the portal is hardcoded to call
+  // http://localhost:3000/developer/onboarding with no prefix.
+  app.use(createOnboardingRouter(onboardingController));
+  app.use(createPersonalizationRouter(personalizationController));
+  app.use(createQuestionsRouter());
+  app.use(
+    createAnalyticsRouter({
+      basePaletteRepository,
+      personalizedPaletteRepository,
+      submissionsRepository,
+      aiProvider,
+    }),
+  );
+  app.use(createLogsRouter());
+
+  app.listen(PORT, () => {
+    // AiClient.ts's isMockMode() gates on NODE_ENV !== "production" — this line
+    // exists so "why am I getting mock data" is answered by the terminal
+    // instead of by re-reading aiClient.ts. Use `npm run dev:live` for real Groq calls.
+    const aiMode = process.env.NODE_ENV === "production" ? "LIVE (Groq)" : "MOCK (fixture data)";
+    console.log(`AI provider mode: ${aiMode} — NODE_ENV="${process.env.NODE_ENV ?? "undefined"}"`);
+    console.log(`ColorTouch server listening on http://localhost:${PORT}`);
+  });
+}
+
+main().catch((err) => {
+  console.error("Fatal error during server startup:", err);
+  process.exit(1);
 });

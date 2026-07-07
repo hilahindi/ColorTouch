@@ -94,8 +94,8 @@ export default function DashboardPage() {
       </div>
 
       <p className="text-xs text-slate-400">
-        All figures reflect this server process's in-memory state since it last started — they
-        reset on restart and aren't backed by a persistent analytics pipeline yet.
+        Figures are computed live from MongoDB — they persist across server restarts, though this
+        is still a direct query view, not a dedicated analytics pipeline.
       </p>
 
       <div>

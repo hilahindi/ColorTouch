@@ -17,25 +17,6 @@ export interface SubmissionRecord {
   };
 }
 
-const MAX_SUBMISSIONS = 500;
-
-// In-memory ring buffer, newest first. Resets on server restart — same
-// caveat as logsService.ts. One entry per call to
-// getOrGeneratePersonalizedPalette (Simulator, Prompt Tuning, and the real
-// SDK all funnel through it), since each represents someone completing the
-// questionnaire and receiving a palette + AI design rationale.
-const submissions: SubmissionRecord[] = [];
-
-export function recordSubmission(record: SubmissionRecord): void {
-  submissions.unshift(record);
-  if (submissions.length > MAX_SUBMISSIONS) submissions.length = MAX_SUBMISSIONS;
-}
-
-export function getRecentSubmissions(developerId?: string): SubmissionRecord[] {
-  if (!developerId) return submissions;
-  return submissions.filter((s) => s.developer_id === developerId);
-}
-
 export interface SubmissionStats {
   total_submissions: number;
   age_distribution: Record<string, number>;
@@ -54,6 +35,8 @@ function tally(values: string[]): Record<string, number> {
  * Aggregates a set of submissions into the shape the audience-insight AI call
  * (and the dashboard's pie charts) needs — counts only, never raw per-user
  * answers, since this is meant to summarize a population, not re-expose PII.
+ * Pure function over whatever SubmissionsRepository.getRecent() returned —
+ * storage lives in ../../repositories/mongoSubmissionsRepository.ts.
  */
 export function computeSubmissionStats(records: SubmissionRecord[]): SubmissionStats {
   const ageAnswers = records
