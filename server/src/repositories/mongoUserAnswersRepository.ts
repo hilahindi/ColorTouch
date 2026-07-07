@@ -21,4 +21,9 @@ export class MongoUserAnswersRepository implements UserAnswersRepository {
       { upsert: true },
     );
   }
+
+  async deleteByUserIds(userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+    await this.collection.deleteMany({ _id: { $in: userIds } });
+  }
 }

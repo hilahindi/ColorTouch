@@ -22,11 +22,16 @@ export class MongoSubmissionsRepository implements SubmissionsRepository {
     return docs.map(({ _id: _omit, ...record }) => record);
   }
 
-  async delete(submissionId: string): Promise<void> {
-    await this.collection.deleteOne({ _id: submissionId });
+  async delete(submissionId: string): Promise<SubmissionRecord | null> {
+    const doc = await this.collection.findOneAndDelete({ _id: submissionId });
+    if (!doc) return null;
+    const { _id: _omit, ...record } = doc;
+    return record;
   }
 
-  async deleteAll(developerId: string): Promise<void> {
+  async deleteAll(developerId: string): Promise<SubmissionRecord[]> {
+    const docs = await this.collection.find({ developer_id: developerId }).toArray();
     await this.collection.deleteMany({ developer_id: developerId });
+    return docs.map(({ _id: _omit, ...record }) => record);
   }
 }

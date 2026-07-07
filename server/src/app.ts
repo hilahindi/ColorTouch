@@ -119,6 +119,7 @@ async function main(): Promise<void> {
     createAnalyticsRouter({
       basePaletteRepository,
       personalizedPaletteRepository,
+      userAnswersRepository,
       submissionsRepository,
       aiProvider,
     }),

@@ -8,6 +8,8 @@ import type { SubmissionRecord } from "../services/submissions/submissionsServic
 export interface SubmissionsRepository {
   record(submission: SubmissionRecord): Promise<void>;
   getRecent(developerId?: string): Promise<SubmissionRecord[]>;
-  delete(submissionId: string): Promise<void>;
-  deleteAll(developerId: string): Promise<void>;
+  /** Returns the deleted record (so callers can cascade by user_id), or null if not found. */
+  delete(submissionId: string): Promise<SubmissionRecord | null>;
+  /** Returns the deleted records (so callers can cascade by user_id). */
+  deleteAll(developerId: string): Promise<SubmissionRecord[]>;
 }

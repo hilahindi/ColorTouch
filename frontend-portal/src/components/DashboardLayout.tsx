@@ -23,9 +23,9 @@ export default function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-white text-slate-900">
+    <div className="flex min-h-screen w-full bg-white text-slate-900">
       <Sidebar activePage={activePage} onNavigate={onNavigate} />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1">
         <div className="mx-auto max-w-6xl px-6 py-8 sm:px-10">
           <div className="mb-8">
             <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>

@@ -8,4 +8,6 @@ import type { UserAnswers } from "../types/userAnswers.types";
  */
 export interface UserAnswersRepository {
   save(userAnswers: UserAnswers): Promise<void>;
+  /** Cascades a submission deletion — removes this user's saved answers. */
+  deleteByUserIds(userIds: string[]): Promise<void>;
 }

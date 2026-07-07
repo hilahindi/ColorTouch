@@ -72,6 +72,10 @@ const CONTRAST_RULE = `Accessibility:
 - Every text-on-background pairing (e.g. onPrimary on primary, onSurface on surface) must meet WCAG AA: a contrast ratio of at least ${WCAG_AA_CONTRAST_RATIO}:1.
 - Verify this for both the "light" and "dark" color modes independently.`;
 
+const TONE_RULE = `Color tone:
+- Favor modern, professional app-like tones — the kind of balanced, tasteful hues seen in polished consumer apps — over neon, fluorescent, or oversaturated colors.
+- A vivid or energetic persona should still read as rich and confident, not glowing or eye-straining. Lean toward slightly muted/deepened saturation rather than pure, maximum-saturation hues.`;
+
 // Pivoted from an explicit, example-driven rulebook (see git history) to an
 // agentic consultant framing per product direction: trust the model's
 // professional judgment on hue/mood/ui_behavior rather than enumerating
@@ -100,6 +104,8 @@ Given a developer's app metadata, generate a BasePalette: a light and dark Mater
 If "app_name", "app_description", and/or "target_audience" are present in the app metadata below, treat them as the strongest signal of intended tone — read the description closely and let it drive hue, saturation, and mood choices, not just the "category" enum. category/personality_tags/kpis are structured hints; the free-text fields are what the app actually is.
 
 ${CONTRAST_RULE}
+
+${TONE_RULE}
 
 Schema:
 - Return an object with exactly two top-level keys: "light" and "dark".
@@ -130,6 +136,8 @@ export function buildPersonalizedPalettePrompt(
 Given an existing BasePalette (trimmed to its key seed colors) and the end user's full questionnaire responses (each entry is the original question text paired with their chosen answer), derive a PersonalizedPalette: a full light/dark Material3 ColorScheme plus ui_behavior and bi_insights.
 
 ${CONTRAST_RULE}
+
+${TONE_RULE}
 
 ${describeUiBehaviorGuidance()}
 

@@ -19,6 +19,10 @@ interface AnalyticsSources {
   };
   personalizedPaletteRepository: {
     getStats(): Promise<{ totalGenerations: number; uniqueUsers: number; repeatUsers: number }>;
+    deleteByUserIds(userIds: string[]): Promise<void>;
+  };
+  userAnswersRepository: {
+    deleteByUserIds(userIds: string[]): Promise<void>;
   };
   submissionsRepository: SubmissionsRepository;
   aiProvider: AiProvider;
@@ -67,23 +71,37 @@ export function createAnalyticsRouter(sources: AnalyticsSources): Router {
     res.status(200).json({ submissions });
   });
 
-  // Dashboard's per-row trash button — removes one submission from the
-  // table/analytics permanently (no undo).
+  // Dashboard's per-row trash button — removes one submission, plus its
+  // underlying personalized-palette generation and saved answers, so the
+  // KPI tiles above (which read those other two collections) stay in sync
+  // with what's actually left in the table.
   router.delete("/analytics/submissions/:submissionId", async (req, res) => {
-    await sources.submissionsRepository.delete(req.params.submissionId);
+    const deleted = await sources.submissionsRepository.delete(req.params.submissionId);
+    if (deleted) {
+      await Promise.all([
+        sources.personalizedPaletteRepository.deleteByUserIds([deleted.user_id]),
+        sources.userAnswersRepository.deleteByUserIds([deleted.user_id]),
+      ]);
+    }
     res.status(204).send();
   });
 
   // Dashboard's "Clear all" button — wipes every submission recorded for
-  // this developer. Scoped to developerId (required) so clearing one
-  // developer's test data can't touch another developer's submissions.
+  // this developer, plus their personalized-palette generations and saved
+  // answers. Scoped to developerId (required) so clearing one developer's
+  // test data can't touch another developer's submissions.
   router.delete("/analytics/submissions", async (req, res) => {
     const developerId = typeof req.query.developerId === "string" ? req.query.developerId : undefined;
     if (!developerId) {
       res.status(400).json({ error: "MissingDeveloperId", message: "developerId query param is required." });
       return;
     }
-    await sources.submissionsRepository.deleteAll(developerId);
+    const deleted = await sources.submissionsRepository.deleteAll(developerId);
+    const userIds = deleted.map((s) => s.user_id);
+    await Promise.all([
+      sources.personalizedPaletteRepository.deleteByUserIds(userIds),
+      sources.userAnswersRepository.deleteByUserIds(userIds),
+    ]);
     res.status(204).send();
   });
 

@@ -22,6 +22,11 @@ export class MongoPersonalizedPaletteRepository implements PersonalizedPaletteRe
     );
   }
 
+  async deleteByUserIds(userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+    await this.collection.deleteMany({ user_id: { $in: userIds } });
+  }
+
   // Not part of PersonalizedPaletteRepository — analytics-only convenience,
   // mirrors the in-memory implementation this replaces. "Repeat" = a user_id
   // with more than one generation ever recorded (no session boundary here,

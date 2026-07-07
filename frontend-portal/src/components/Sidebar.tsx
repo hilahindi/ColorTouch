@@ -26,7 +26,7 @@ interface SidebarProps {
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   return (
-    <aside className="flex h-full w-64 flex-shrink-0 flex-col border-r border-slate-200 bg-[#F8F9FA] px-3 py-6">
+    <aside className="flex w-64 flex-shrink-0 flex-col border-r border-slate-200 bg-[#F8F9FA] px-3 py-6">
       <div className="mb-6 px-3">
         <p className="text-sm font-bold tracking-tight text-slate-900">ColorTouch</p>
         <p className="text-xs text-slate-400">Developer Dashboard</p>

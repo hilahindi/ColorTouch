@@ -7,4 +7,6 @@ import type { PersonalizedPalette } from "../types/personalizedPalette.types";
  */
 export interface PersonalizedPaletteRepository {
   save(palette: PersonalizedPalette): Promise<void>;
+  /** Cascades a submission deletion — removes this user's generation history so analytics stats stay in sync with the submissions table. */
+  deleteByUserIds(userIds: string[]): Promise<void>;
 }
