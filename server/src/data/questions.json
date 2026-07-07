@@ -2,144 +2,144 @@
   "core_questions": [
     {
       "id": "age_range",
-      "text": "מה טווח הגילאים שלך?",
+      "text": "What's your age range?",
       "options": ["18-24", "25-34", "35-50", "50+"]
     },
     {
       "id": "usage_hours",
-      "text": "באילו שעות אתה משתמש באפליקציות הכי הרבה?",
+      "text": "When do you use apps the most?",
       "options": [
-        "בבוקר או בדרכים (נסיעות / קפה של בוקר)",
-        "במהלך יום העבודה / לימודים (מול מסכים)",
-        "בערב או בלילה (לפני השינה)",
-        "בפיזור שווה לאורך כל שעות היום"
+        "Morning or on the go (commute / morning coffee)",
+        "During work or study hours (screen time)",
+        "Evening or at night (before bed)",
+        "Evenly spread throughout the day"
       ]
     },
     {
       "id": "reading_style",
-      "text": "כשאתה נכנס לאפליקציה, מה סגנון הקריאה שלך?",
+      "text": "When you open an app, what's your reading style?",
       "options": [
-        "סורק מהר – מחפש רק את השורה התחתונה",
-        "יסודי – קורא ומתעמק בכל הפרטים",
-        "ויזואלי – מחפש בעיקר תמונות, אייקונים ווידאו",
-        "משתנה – תלוי בכמות הזמן הפנוי שיש לי באותו רגע"
+        "Quick scanner – just looking for the bottom line",
+        "Thorough – reads and digs into every detail",
+        "Visual – mostly looking for images, icons and video",
+        "It depends – varies with how much free time I have"
       ]
     },
     {
       "id": "desired_feeling",
-      "text": "איזו תחושה הכי היית רוצה שהסביבה הדיגיטלית שלך תשדר?",
+      "text": "What feeling would you most like your digital environment to convey?",
       "options": [
-        "רוגע, מיקוד וניקיון מהסחות דעת",
-        "אנרגיה, חיוניות וחדשנות",
-        "אמינות, רשמיות וסדר",
-        "יצירתיות, חום והשראה"
+        "Calm, focus, and freedom from distraction",
+        "Energy, vitality, and innovation",
+        "Reliability, formality, and order",
+        "Creativity, warmth, and inspiration"
       ]
     },
     {
       "id": "visual_mode_preference",
-      "text": "מהי ההעדפה הוויזואלית הקבועה שלך במסכים?",
+      "text": "What's your fixed visual preference on screens?",
       "options": [
-        "עיצוב בהיר ונקי (Light Mode)",
-        "עיצוב כהה לשמירה על העיניים (Dark Mode)",
-        "עיצוב עם ניגודיות גבוהה (High Contrast) לקריאות מקסימלית",
-        "אוטומטי – משתנה לפי השעה ביום"
+        "Bright, clean design (Light Mode)",
+        "Dark design to protect your eyes (Dark Mode)",
+        "High Contrast design for maximum readability",
+        "Automatic – changes based on time of day"
       ]
     }
   ],
   "deep_dive_questions": [
     {
       "id": "gender",
-      "text": "מגדר:",
-      "options": ["גבר", "אישה", "א-בינארי / אחר", "מעדיף/ה לא לציין"]
+      "text": "Gender:",
+      "options": ["Male", "Female", "Non-binary / Other", "Prefer not to say"]
     },
     {
       "id": "usage_location",
-      "text": "איפה אתה נמצא לרוב בזמן השימוש בנייד?",
+      "text": "Where are you usually located while using your phone?",
       "options": [
-        "במשרד או בבית (מואר היטב)",
-        "בחוץ (שמש ישירה / תאורה טבעית חזקה)",
-        "בחדר חשוך (תאורה מינימלית)",
-        "סביבה שמשתנה כל הזמן (בתנועה מתמדת)"
+        "Office or home (well lit)",
+        "Outdoors (direct sunlight / strong natural light)",
+        "Dark room (minimal lighting)",
+        "Constantly changing environment (on the move)"
       ]
     },
     {
       "id": "screen_time",
-      "text": "כמה שעות ביום אתה מול מסכים (טלפון ומחשב יחד)?",
+      "text": "How many hours a day are you in front of screens (phone and computer combined)?",
       "options": [
-        "מעט – עד שעתיים ביום",
-        "ממוצע – בין 3 ל-5 שעות ביום",
-        "הרבה – בין 6 ל-8 שעות ביום",
-        "המון – יותר מ-8 שעות (מחובר רוב היום)"
+        "Light – up to 2 hours a day",
+        "Average – 3 to 5 hours a day",
+        "Heavy – 6 to 8 hours a day",
+        "Very heavy – more than 8 hours (connected most of the day)"
       ]
     },
     {
       "id": "decision_style",
-      "text": "איך היית מתאר את תהליך קבלת ההחלטות שלך?",
+      "text": "How would you describe your decision-making process?",
       "options": [
-        "ספונטני ומהיר (אוהב לנסות דברים חדשים)",
-        "שקול (מנתח ובודק כל פרט לפני לחיצה)",
-        "אינטואיטיבי (הולך נטו עם תחושת בטן)",
-        "חברתי (מושפע מהמלצות וביקורות של אחרים)"
+        "Spontaneous and quick (loves trying new things)",
+        "Deliberate (analyzes and checks every detail before clicking)",
+        "Intuitive (goes with gut feeling)",
+        "Social (influenced by others' recommendations and reviews)"
       ]
     },
     {
       "id": "color_sensitivity",
-      "text": "איך העיניים שלך מגיבות לצבעים חזקים במסך?",
+      "text": "How do your eyes react to strong colors on screen?",
       "options": [
-        "רגישות מאוד – מעדיף רק צבעים רכים ופסטליים",
-        "רגישות בינונית – מעדיף גוונים כהים ומרגיעים",
-        "לא רגישות – אוהב צבעים עזים, בוהקים וניאון",
-        "אדישות – מעדיף עיצוב שחור-לבן-אפור (מונוכרומטי)"
+        "Very sensitive – prefers only soft, pastel colors",
+        "Moderately sensitive – prefers dark, calming tones",
+        "Not sensitive – loves bold, bright, neon colors",
+        "Indifferent – prefers a black-white-gray (monochrome) design"
       ]
     },
     {
       "id": "design_style_preference",
-      "text": "איזה סגנון עיצוב ואמנות הכי מדבר אליך בחיים האישיים?",
+      "text": "Which design and art style speaks to you most in everyday life?",
       "options": [
-        "מינימליזם מודרני (קווים נקיים, מעט צבעים)",
-        "רטרו / וינטג' (חמים, נוסטלגי, צבעי אדמה)",
-        "עתידני / סייברפאנק (הייטק, מתכתי, ניאון)",
-        "טבעי ואורגני (ירוק, עץ, זורם)"
+        "Modern minimalism (clean lines, few colors)",
+        "Retro / vintage (warm, nostalgic, earth tones)",
+        "Futuristic / cyberpunk (high-tech, metallic, neon)",
+        "Natural and organic (green, wood, flowing)"
       ]
     },
     {
       "id": "navigation_style",
-      "text": "איך אתה הכי אוהב לנווט בתוך אפליקציות?",
+      "text": "How do you most like to navigate within apps?",
       "options": [
-        "מחוות אצבע והחלקות (Swipes / Gestures)",
-        "תפריטים מובנים וכפתורים ברורים למטה",
-        "שורת חיפוש טקסטואלית (הקלדה מהירה)",
-        "פקודות קוליות או קיצורי דרך"
+        "Swipes / gestures",
+        "Built-in menus and clear buttons at the bottom",
+        "Text search bar (fast typing)",
+        "Voice commands or shortcuts"
       ]
     },
     {
       "id": "app_usage_motivation",
-      "text": "מה המניע העיקרי שלך לשימוש באפליקציות חדשות?",
+      "text": "What's your main motivation for using new apps?",
       "options": [
-        "שיפור פרודוקטיביות וניהול זמן (כלים)",
-        "בידור, פנאי והעברת זמן בכיף (משחקים/תוכן)",
-        "תקשורת, קהילה וקשרים חברתיים (רשתות)",
-        "למידה, התפתחות אישית וכושר"
+        "Improving productivity and time management (tools)",
+        "Entertainment, leisure, and having fun (games/content)",
+        "Communication, community, and social connections (networks)",
+        "Learning, personal development, and fitness"
       ]
     },
     {
       "id": "attention_span",
-      "text": "איך היית מתאר את טווח הקשב (Attention Span) שלך מול הנייד?",
+      "text": "How would you describe your attention span on mobile?",
       "options": [
-        "גבוה מאוד – מסוגל להתעמק במסך אחד לאורך זמן",
-        "קצר – משתעמם מהר וחייב גירויים חדשים",
-        "מולטי-טאסקינג – קופץ כל הזמן בין 3 אפליקציות במקביל",
-        "תלוי בסביבה וברמת העייפות שלי באותו רגע"
+        "Very high – able to focus on one screen for a long time",
+        "Short – gets bored quickly and needs new stimuli",
+        "Multi-tasking – constantly jumps between 3 apps at once",
+        "Depends on the environment and how tired I am at the moment"
       ]
     },
     {
       "id": "tech_savviness",
-      "text": "עד כמה אתה מחשיב את עצמך כ\"איש טכנולוגי\"?",
+      "text": "How tech-savvy would you consider yourself?",
       "options": [
-        "Early Adopter – תמיד הראשון לנסות פיצ'רים וטכנולוגיות חדשות",
-        "מתקדם – שולט היטב במערכות אבל לא ממהר לשדרג",
-        "פרקטי – ממוצע, משתמש רק במה שצריך בשביל היום-יום",
-        "חובב פשטות – עודף טכנולוגיה ומסכים מסובכים מלחיצים אותי"
+        "Early Adopter – always first to try new features and technologies",
+        "Advanced – knows systems well but isn't in a rush to upgrade",
+        "Practical – average, only uses what's needed day-to-day",
+        "Simplicity lover – too much technology and complicated screens stress me out"
       ]
     }
   ]

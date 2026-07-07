@@ -1,5 +1,13 @@
 import { Router } from "express";
 
+import type { BasePalette } from "../../types/basePalette.types";
+import type { AiProvider } from "../../services/ai/aiClient";
+import { AiGenerationError } from "../../services/ai/aiClient";
+import {
+  getRecentSubmissions,
+  computeSubmissionStats,
+} from "../../services/submissions/submissionsService";
+
 /**
  * Minimal shape this route needs from the concrete in-memory repositories —
  * deliberately not the BasePaletteRepository/PersonalizedPaletteRepository
@@ -8,10 +16,14 @@ import { Router } from "express";
  * contract every backing store must implement.
  */
 interface AnalyticsSources {
-  basePaletteRepository: { count(): number };
+  basePaletteRepository: {
+    count(): number;
+    findByDeveloper(developerId: string): Promise<BasePalette | null>;
+  };
   personalizedPaletteRepository: {
     getStats(): { totalGenerations: number; uniqueUsers: number; repeatUsers: number };
   };
+  aiProvider: AiProvider;
 }
 
 /**
@@ -46,6 +58,56 @@ export function createAnalyticsRouter(sources: AnalyticsSources): Router {
       },
       ai_mode: process.env.NODE_ENV === "production" ? "live" : "mock",
     });
+  });
+
+  // One row per completed questionnaire (Simulator, Prompt Tuning, and the
+  // real SDK all funnel through the same personalization call) — the
+  // dashboard's submissions table and pie charts render straight off this.
+  router.get("/analytics/submissions", (req, res) => {
+    const developerId = typeof req.query.developerId === "string" ? req.query.developerId : undefined;
+    res.status(200).json({ submissions: getRecentSubmissions(developerId) });
+  });
+
+  // AI-generated "who is this app for, and what does it provide" analysis,
+  // grounded in the requesting developer's own app metadata plus aggregated
+  // stats over their submissions so far.
+  router.get("/analytics/audience-insight", async (req, res) => {
+    const developerId = typeof req.query.developerId === "string" ? req.query.developerId : undefined;
+    if (!developerId) {
+      res.status(400).json({ error: "MissingDeveloperId", message: "developerId query param is required." });
+      return;
+    }
+
+    const basePalette = await sources.basePaletteRepository.findByDeveloper(developerId);
+    if (!basePalette) {
+      res.status(404).json({
+        error: "BasePaletteNotFound",
+        message: `No BasePalette found for developer "${developerId}" — onboard an app first.`,
+      });
+      return;
+    }
+
+    const stats = computeSubmissionStats(getRecentSubmissions(developerId));
+
+    try {
+      const insight = await sources.aiProvider.generateAudienceInsight({
+        appMetadata: basePalette.app_metadata,
+        submissionStats: stats,
+      });
+      res.status(200).json({ ...insight, stats, generated_at: new Date().toISOString() });
+    } catch (err) {
+      if (err instanceof AiGenerationError) {
+        res.status(503).json({
+          error: "AiGenerationFailed",
+          message: "Audience insight generation is temporarily unavailable. Please retry shortly.",
+        });
+        return;
+      }
+      res.status(500).json({
+        error: "InternalError",
+        message: "An unexpected error occurred while generating the audience insight.",
+      });
+    }
   });
 
   return router;

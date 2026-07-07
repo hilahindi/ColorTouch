@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import { useQuestions } from "../hooks/useQuestions";
+import { useSubmissions } from "../hooks/useSubmissions";
+import SubmissionsTable from "../components/SubmissionsTable";
+import AnswerDistributionCharts from "../components/AnswerDistributionCharts";
+import AudienceInsightCard from "../components/AudienceInsightCard";
 
 const ANALYTICS_ENDPOINT = "http://localhost:3000/analytics";
 
@@ -37,6 +42,8 @@ function KpiTile({
 export default function DashboardPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { questions } = useQuestions();
+  const { submissions, error: submissionsError } = useSubmissions();
 
   useEffect(() => {
     fetch(ANALYTICS_ENDPOINT)
@@ -90,6 +97,24 @@ export default function DashboardPage() {
         All figures reflect this server process's in-memory state since it last started — they
         reset on restart and aren't backed by a persistent analytics pipeline yet.
       </p>
+
+      <div>
+        <h2 className="mb-3 text-base font-semibold text-slate-900">User Submissions</h2>
+        {submissionsError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {submissionsError}
+          </div>
+        ) : (
+          <SubmissionsTable submissions={submissions} questions={questions} />
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-base font-semibold text-slate-900">Answer Distribution</h2>
+        <AnswerDistributionCharts submissions={submissions} questions={questions} />
+      </div>
+
+      <AudienceInsightCard />
     </div>
   );
 }

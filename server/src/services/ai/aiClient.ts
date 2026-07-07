@@ -9,9 +9,11 @@ import type {
 } from "../../types/personalizedPalette.types";
 import type { ColorModes } from "../../types/colorScheme.types";
 import type { UserAnswers } from "../../types/userAnswers.types";
+import type { SubmissionStats } from "../submissions/submissionsService";
 import {
   buildBasePalettePrompt,
   buildPersonalizedPalettePrompt,
+  buildAudienceInsightPrompt,
   type AiPrompt,
 } from "./promptBuilder";
 import {
@@ -37,11 +39,24 @@ export interface GeneratePersonalizedPaletteInput {
   systemPromptOverride?: string;
 }
 
+export interface AudienceInsight {
+  target_audience: string;
+  value_proposition: string;
+}
+
+export interface GenerateAudienceInsightInput {
+  appMetadata: AppMetadata;
+  submissionStats: SubmissionStats;
+}
+
 export interface AiProvider {
   generateBasePalette(input: GenerateBasePaletteInput): Promise<BasePalette>;
   generatePersonalizedPalette(
     input: GeneratePersonalizedPaletteInput,
   ): Promise<PersonalizedPalette>;
+  generateAudienceInsight(
+    input: GenerateAudienceInsightInput,
+  ): Promise<AudienceInsight>;
 }
 
 export class AiGenerationError extends Error {
@@ -621,11 +636,11 @@ const MOCK_NIGHT: MockProfile = {
 // fallback, so it's listed last — the explicit check only matters if a
 // creative keyword co-occurs with another profile's in the same answer set.
 const PROFILE_KEYWORDS: Array<{ profile: MockProfile; keywords: string[] }> = [
-  { profile: MOCK_FOCUS, keywords: ["ריכוז", "שקט", "יסודי"] },
-  { profile: MOCK_ENERGETIC, keywords: ["בוקר", "נסיעות", "מהיר"] },
-  { profile: MOCK_BALANCED, keywords: ["סדר", "יציבות", "מאוזן"] },
-  { profile: MOCK_NIGHT, keywords: ["לילה", "dark mode", "עיניים"] },
-  { profile: MOCK_CREATIVE, keywords: ["יצירתיות", "חום", "השראה"] },
+  { profile: MOCK_FOCUS, keywords: ["focus", "calm", "thorough"] },
+  { profile: MOCK_ENERGETIC, keywords: ["morning", "on the go", "quick scanner"] },
+  { profile: MOCK_BALANCED, keywords: ["order", "formality", "reliability"] },
+  { profile: MOCK_NIGHT, keywords: ["at night", "dark mode", "protect your eyes"] },
+  { profile: MOCK_CREATIVE, keywords: ["creativity", "warmth", "inspiration"] },
 ];
 
 /**
@@ -649,6 +664,51 @@ function getMockResponse(userAnswers: UserAnswers): MockProfile {
   }
 
   return MOCK_CREATIVE;
+}
+
+// --- Mock audience-insight fixture ---------------------------------------
+
+function topEntry(counts: Record<string, number>): string | null {
+  const entries = Object.entries(counts);
+  if (entries.length === 0) return null;
+  return entries.reduce((best, entry) => (entry[1] > best[1] ? entry : best))[0];
+}
+
+function describeAppValueProposition(appMetadata: AppMetadata): string {
+  const name = appMetadata.app_name ?? "This app";
+  const category = appMetadata.custom_category ?? appMetadata.category.replace("_", " ");
+  const description = appMetadata.app_description
+    ? ` ${appMetadata.app_description}`
+    : "";
+  const tags = appMetadata.personality_tags.join(", ");
+  return `${name} is a ${category} app.${description} Its brand personality is described as ${tags}, and ColorTouch personalizes its color palette and UI behavior per end user to reinforce that identity for each person's psychological profile.`;
+}
+
+/**
+ * Rule-based mock analysis — mirrors getMockResponse()'s "still visibly
+ * reacts to real input" approach: no network call, but the numbers quoted
+ * are genuinely computed from the submissions recorded this session.
+ */
+function getMockAudienceInsight(
+  appMetadata: AppMetadata,
+  stats: SubmissionStats,
+): AudienceInsight {
+  if (stats.total_submissions === 0) {
+    return {
+      target_audience:
+        "No end-user questionnaire submissions yet this session — generate a few personalized palettes (via the Simulator or Prompt Tuning pages) to see a real audience analysis here.",
+      value_proposition: describeAppValueProposition(appMetadata),
+    };
+  }
+
+  const topAge = topEntry(stats.age_distribution);
+  const topPersona = topEntry(stats.persona_distribution);
+  const traitList = stats.top_traits.map((t) => t.trait).join(", ") || "none recorded yet";
+
+  return {
+    target_audience: `Mock analysis (rule-based, computed from this session's data) — of ${stats.total_submissions} recorded submission(s), the largest age group is ${topAge ?? "unknown"} and the most common resulting persona is "${topPersona ?? "unknown"}". Most frequent traits across users: ${traitList}.`,
+    value_proposition: describeAppValueProposition(appMetadata),
+  };
 }
 
 // --- Provider ------------------------------------------------------------
@@ -738,6 +798,19 @@ export class GroqAiProvider implements AiProvider {
 
       validatePersonalizedPalette(candidate);
       return candidate;
+    });
+  }
+
+  async generateAudienceInsight(
+    input: GenerateAudienceInsightInput,
+  ): Promise<AudienceInsight> {
+    if (isMockMode()) {
+      return getMockAudienceInsight(input.appMetadata, input.submissionStats);
+    }
+
+    return withRetry("generateAudienceInsight", async () => {
+      const prompt = buildAudienceInsightPrompt(input.appMetadata, input.submissionStats);
+      return (await callGroq(prompt)) as AudienceInsight;
     });
   }
 }

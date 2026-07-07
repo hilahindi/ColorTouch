@@ -2,6 +2,7 @@ import type { AppMetadata, BasePalette } from "../../types/basePalette.types";
 import type { UserAnswers } from "../../types/userAnswers.types";
 import type { Material3ColorScheme } from "../../types/colorScheme.types";
 import { buildQuestionnaireContext } from "../questions/questionsService";
+import type { SubmissionStats } from "../submissions/submissionsService";
 
 /**
  * Splitting system/user lets callers map directly onto the Claude Messages
@@ -142,6 +143,38 @@ ${OUTPUT_FORMAT_RULE}`;
 
   const user = `Derive a PersonalizedPalette from this context:
 ${JSON.stringify({ base_context: context, questionnaire_responses: questionnaireResponses }, null, 2)}`;
+
+  return { system, user };
+}
+
+/**
+ * Builds the prompt for a developer-facing "who is this app for, and what
+ * does it provide" analysis, grounded in the app's own metadata plus
+ * aggregated (never per-user) stats about the end users who've completed the
+ * in-app questionnaire so far.
+ */
+export function buildAudienceInsightPrompt(
+  appMetadata: AppMetadata,
+  stats: SubmissionStats,
+): AiPrompt {
+  const system = `You are a product analyst for the ColorTouch SDK's developer dashboard.
+
+Given an app's metadata and aggregated stats about the end users who completed its in-app personalization questionnaire, write a concise business analysis for the app's developer.
+
+How to work:
+- Ground every claim in the actual data provided (age/persona/segment distribution, top traits) — don't invent demographics that aren't supported by it.
+- If total_submissions is 0 or very low, say so plainly rather than fabricating a confident-sounding analysis.
+
+Output schema (strict):
+- Return an object with exactly two string fields: "target_audience" and "value_proposition".
+- "target_audience": 2-4 sentences describing who this app's end users appear to be, grounded in the provided distribution data.
+- "value_proposition": 2-4 sentences describing what the app provides its users and why personalized color/UI matters for that audience.
+- Do not add, omit, or rename fields.
+
+${OUTPUT_FORMAT_RULE}`;
+
+  const user = `Analyze this app and its user base:
+${JSON.stringify({ app_metadata: appMetadata, submission_stats: stats }, null, 2)}`;
 
   return { system, user };
 }

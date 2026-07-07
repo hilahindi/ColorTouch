@@ -3,7 +3,15 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("maven-publish")
 }
+
+// Semantic Versioning (semver.org): MAJOR.MINOR.PATCH. Bump MAJOR for
+// breaking public-API changes, MINOR for backwards-compatible additions,
+// PATCH for backwards-compatible fixes. Consumers (sample-app, Jitpack
+// releases) reference this via a git tag of the same value — see the
+// project's Jitpack setup notes for the tag-per-release convention.
+version = "0.1.0"
 
 android {
     namespace = "com.colortouch.sdk"
@@ -25,6 +33,34 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    // Exposes the "release" AAR variant (plus a sources jar) as a Maven
+    // publication below — required for Jitpack, which builds whatever
+    // `publishToMavenLocal`-style publication it finds for the tag it's
+    // asked to build.
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+// Jitpack invokes its own equivalent of `./gradlew publishToMavenLocal` against
+// a pushed git tag, so groupId/artifactId/version here only need to be valid
+// Maven coordinates — Jitpack ignores them and derives the actual consumer
+// coordinate from the GitHub path instead (com.github.hilahindi:ColorTouch,
+// module colortouch-sdk, version = the tag name). See ../JITPACK.md.
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "com.github.hilahindi"
+                artifactId = "colortouch-sdk"
+                version = project.version.toString()
+            }
+        }
     }
 }
 

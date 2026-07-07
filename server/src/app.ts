@@ -160,7 +160,7 @@ app.use((req, res, next) => {
 app.use(createOnboardingRouter(onboardingController));
 app.use(createPersonalizationRouter(personalizationController));
 app.use(createQuestionsRouter());
-app.use(createAnalyticsRouter({ basePaletteRepository, personalizedPaletteRepository }));
+app.use(createAnalyticsRouter({ basePaletteRepository, personalizedPaletteRepository, aiProvider }));
 app.use(createLogsRouter());
 
 app.listen(PORT, () => {

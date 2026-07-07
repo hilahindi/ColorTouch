@@ -65,6 +65,7 @@ export function validateQuestionnaireResponses(userAnswers: UserAnswers): void {
 }
 
 export interface QuestionnaireContextEntry {
+  question_id: string;
   question: string;
   answer: string;
 }
@@ -72,8 +73,11 @@ export interface QuestionnaireContextEntry {
 /**
  * Resolves each response's question_id to its original question text from
  * questions.json. The raw {question_id, answer_value} pairs alone don't give
- * the model enough context — "age_range: 25-34" is opaque, "מה טווח הגילאים
- * שלך? -> 25-34" is what actually informs a color/tone decision.
+ * the model enough context — "age_range: 25-34" is opaque, "What's your age
+ * range? -> 25-34" is what actually informs a color/tone decision. question_id
+ * is kept alongside the resolved text so downstream consumers (e.g. the
+ * submissions dashboard) can key off a stable id instead of matching on
+ * question text.
  */
 export function buildQuestionnaireContext(userAnswers: UserAnswers): QuestionnaireContextEntry[] {
   const entries: QuestionnaireContextEntry[] = [];
@@ -81,7 +85,7 @@ export function buildQuestionnaireContext(userAnswers: UserAnswers): Questionnai
   for (const response of userAnswers.responses) {
     const question = QUESTIONS_BY_ID.get(response.question_id);
     if (!question) continue; // already rejected by validateQuestionnaireResponses upstream
-    entries.push({ question: question.text, answer: response.answer_value });
+    entries.push({ question_id: question.id, question: question.text, answer: response.answer_value });
   }
 
   return entries;

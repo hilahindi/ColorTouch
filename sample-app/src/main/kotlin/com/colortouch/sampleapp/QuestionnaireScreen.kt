@@ -37,7 +37,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,10 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.colortouch.sdk.model.Question
 import com.colortouch.sdk.model.QuestionsData
@@ -127,84 +124,82 @@ fun QuestionnaireBottomSheet(
         onDismissRequest = { if (!isSubmitting) dismiss() },
         sheetState = sheetState,
     ) {
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            Column(modifier = Modifier.fillMaxHeight(0.92f)) {
-                TopAppBar(
-                    title = {},
-                    navigationIcon = {
-                        IconButton(onClick = { if (!isSubmitting) if (canGoBack) stepIndex-- else dismiss() }) {
-                            Icon(
-                                imageVector = if (canGoBack) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Close,
-                                contentDescription = if (canGoBack) "חזרה" else "סגירה",
-                            )
+        Column(modifier = Modifier.fillMaxHeight(0.92f)) {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = { if (!isSubmitting) if (canGoBack) stepIndex-- else dismiss() }) {
+                        Icon(
+                            imageVector = if (canGoBack) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Close,
+                            contentDescription = if (canGoBack) "Back" else "Close",
+                        )
+                    }
+                },
+            )
+
+            LinearProgressIndicator(
+                progress = { (safeIndex + 1f) / pages.size },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+            )
+
+            Box(modifier = Modifier.weight(1f)) {
+                AnimatedContent(
+                    targetState = safeIndex,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            (slideInHorizontally(tween(250)) { width -> width } + fadeIn())
+                                .togetherWith(slideOutHorizontally(tween(250)) { width -> -width } + fadeOut())
+                        } else {
+                            (slideInHorizontally(tween(250)) { width -> -width } + fadeIn())
+                                .togetherWith(slideOutHorizontally(tween(250)) { width -> width } + fadeOut())
                         }
                     },
-                )
+                    label = "question-step-transition",
+                ) { index ->
+                    when (val page = pages[index]) {
+                        is WizardPage.QuestionPage -> QuestionPageContent(
+                            question = page.question,
+                            selectedAnswer = answers[page.question.id],
+                            onSelect = { value -> answers = answers + (page.question.id to value) },
+                        )
+                        WizardPage.DeepDivePrompt -> DeepDivePromptContent(
+                            onContinue = { deepDiveStarted = true },
+                            onSkip = ::submit,
+                        )
+                    }
+                }
 
-                LinearProgressIndicator(
-                    progress = { (safeIndex + 1f) / pages.size },
+                if (isSubmitting) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+
+            errorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
+
+            if (currentPage is WizardPage.QuestionPage) {
+                Button(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                )
-
-                Box(modifier = Modifier.weight(1f)) {
-                    AnimatedContent(
-                        targetState = safeIndex,
-                        transitionSpec = {
-                            if (targetState > initialState) {
-                                (slideInHorizontally(tween(250)) { width -> width } + fadeIn())
-                                    .togetherWith(slideOutHorizontally(tween(250)) { width -> -width } + fadeOut())
-                            } else {
-                                (slideInHorizontally(tween(250)) { width -> -width } + fadeIn())
-                                    .togetherWith(slideOutHorizontally(tween(250)) { width -> width } + fadeOut())
-                            }
-                        },
-                        label = "question-step-transition",
-                    ) { index ->
-                        when (val page = pages[index]) {
-                            is WizardPage.QuestionPage -> QuestionPageContent(
-                                question = page.question,
-                                selectedAnswer = answers[page.question.id],
-                                onSelect = { value -> answers = answers + (page.question.id to value) },
-                            )
-                            WizardPage.DeepDivePrompt -> DeepDivePromptContent(
-                                onContinue = { deepDiveStarted = true },
-                                onSkip = ::submit,
-                            )
-                        }
-                    }
-
-                    if (isSubmitting) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                }
-
-                errorMessage?.let { message ->
-                    Text(
-                        text = message,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                    )
-                }
-
-                if (currentPage is WizardPage.QuestionPage) {
-                    Button(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        enabled = canAdvance && !isSubmitting,
-                        onClick = { if (isLastPage) submit() else stepIndex++ },
-                    ) {
-                        Text(if (isLastPage) "שליחה" else "הבא")
-                    }
+                        .padding(20.dp),
+                    enabled = canAdvance && !isSubmitting,
+                    onClick = { if (isLastPage) submit() else stepIndex++ },
+                ) {
+                    Text(if (isLastPage) "Submit" else "Next")
                 }
             }
         }
@@ -265,23 +260,23 @@ private fun DeepDivePromptContent(onContinue: () -> Unit, onSkip: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "רוצה פלטה מדויקת יותר?",
+            text = "Want a more accurate palette?",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
         )
         Text(
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
-            text = "10 שאלות נוספות (רשות) יעזרו ל-AI לדייק את הפלטה שלך",
+            text = "10 more optional questions will help the AI fine-tune your palette",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
         )
         Button(modifier = Modifier.fillMaxWidth(), onClick = onContinue) {
-            Text("המשך ל-10 שאלות נוספות")
+            Text("Continue to 10 more questions")
         }
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(modifier = Modifier.fillMaxWidth(), onClick = onSkip) {
-            Text("דלג וקבל את הפלטה שלי")
+            Text("Skip and get my palette")
         }
     }
 }

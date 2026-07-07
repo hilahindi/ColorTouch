@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { PersonalizedPalette } from "../../types/personalizedPalette.types";
 import type { UserAnswers } from "../../types/userAnswers.types";
 import type { AiProvider } from "../ai/aiClient";
@@ -7,6 +9,8 @@ import type { PersonalizedPaletteRepository } from "../../repositories/personali
 import type { PersonalizedPaletteCache } from "../../cache/personalizedPaletteCache";
 import { validatePersonalizedPalette } from "../../validation/schemaValidator";
 import { buildPersonalizedPalettePrompt, type AiPrompt } from "../ai/promptBuilder";
+import { buildQuestionnaireContext } from "../questions/questionsService";
+import { recordSubmission } from "../submissions/submissionsService";
 
 export class BasePaletteNotFoundError extends Error {
   constructor(developerId: string) {
@@ -52,6 +56,33 @@ export function createPersonalizedPaletteService(
     personalizedPaletteCache,
   } = deps;
 
+  // Every successful call represents someone completing the questionnaire
+  // and receiving a palette + AI design rationale (whether that's a cache
+  // hit on unchanged answers or a fresh generation) — recorded once per call
+  // so the dashboard's submissions table has one row per person, not per
+  // distinct AI generation.
+  function recordAsSubmission(
+    developerId: string,
+    userAnswers: UserAnswers,
+    palette: PersonalizedPalette,
+  ): void {
+    recordSubmission({
+      submission_id: randomUUID(),
+      user_id: userAnswers.user_id,
+      developer_id: developerId,
+      submitted_at: new Date().toISOString(),
+      responses: buildQuestionnaireContext(userAnswers),
+      palette: {
+        colors: palette.colors,
+        persona_label: palette.bi_insights.persona_label,
+        confidence_score: palette.bi_insights.confidence_score,
+        traits: palette.bi_insights.traits,
+        segment: palette.bi_insights.segment,
+        mutation_reason: palette.bi_insights.mutation_reason,
+      },
+    });
+  }
+
   async function getOrGeneratePersonalizedPalette(
     developerId: string,
     userId: string,
@@ -77,6 +108,7 @@ export function createPersonalizedPaletteService(
         cached &&
         isFreshForBase(cached, basePalette.palette_id, basePalette.version)
       ) {
+        recordAsSubmission(developerId, userAnswers, cached);
         return cached;
       }
     }
@@ -107,6 +139,7 @@ export function createPersonalizedPaletteService(
       `Generated personalized palette for user "${userId}": ${JSON.stringify(generated)}`,
     );
 
+    recordAsSubmission(developerId, userAnswers, generated);
     return generated;
   }
 
