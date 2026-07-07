@@ -7,17 +7,10 @@ import AudienceInsightCard from "../components/AudienceInsightCard";
 
 const ANALYTICS_ENDPOINT = "http://localhost:3000/analytics";
 
-interface AnalyticsMetric {
-  value: number;
-  definition: string;
-}
-
 interface AnalyticsData {
   apps_onboarded: number;
   total_personalizations: number;
   unique_users: number;
-  personalization_rate: AnalyticsMetric;
-  retention_rate: AnalyticsMetric;
   ai_mode: "mock" | "live";
 }
 
@@ -43,9 +36,14 @@ export default function DashboardPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { questions } = useQuestions();
-  const { submissions, error: submissionsError } = useSubmissions();
+  const {
+    submissions,
+    error: submissionsError,
+    deleteSubmission,
+    clearAllSubmissions,
+  } = useSubmissions();
 
-  useEffect(() => {
+  function loadAnalytics() {
     fetch(ANALYTICS_ENDPOINT)
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load analytics (status ${res.status})`);
@@ -53,7 +51,9 @@ export default function DashboardPage() {
       })
       .then((json: AnalyticsData) => setData(json))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load analytics."));
-  }, []);
+  }
+
+  useEffect(loadAnalytics, []);
 
   if (error) {
     return (
@@ -80,32 +80,37 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <KpiTile
-          label="Personalization Rate"
-          value={`${(data.personalization_rate.value * 100).toFixed(0)}%`}
-          caption={data.personalization_rate.definition}
-        />
-        <KpiTile
-          label="Retention"
-          value={`${(data.retention_rate.value * 100).toFixed(0)}%`}
-          caption={data.retention_rate.definition}
-        />
-      </div>
-
-      <p className="text-xs text-slate-400">
-        Figures are computed live from MongoDB — they persist across server restarts, though this
-        is still a direct query view, not a dedicated analytics pipeline.
-      </p>
-
       <div>
-        <h2 className="mb-3 text-base font-semibold text-slate-900">User Submissions</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-900">User Submissions</h2>
+          {submissions.length > 0 && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (window.confirm(`Delete all ${submissions.length} submission(s)? This can't be undone.`)) {
+                  await clearAllSubmissions();
+                  loadAnalytics();
+                }
+              }}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
         {submissionsError ? (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {submissionsError}
           </div>
         ) : (
-          <SubmissionsTable submissions={submissions} questions={questions} />
+          <SubmissionsTable
+            submissions={submissions}
+            questions={questions}
+            onDelete={async (submissionId) => {
+              await deleteSubmission(submissionId);
+              loadAnalytics();
+            }}
+          />
         )}
       </div>
 

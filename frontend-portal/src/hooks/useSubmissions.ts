@@ -25,5 +25,27 @@ export function useSubmissions() {
       .finally(() => setLoading(false));
   }, []);
 
-  return { submissions, error, loading };
+  // Optimistic: removes locally right away rather than waiting on a refetch,
+  // since this is a plain 204-on-success delete with nothing else to sync.
+  async function deleteSubmission(submissionId: string) {
+    const previous = submissions;
+    setSubmissions((current) => current.filter((s) => s.submission_id !== submissionId));
+    const res = await fetch(`${SUBMISSIONS_ENDPOINT}/${submissionId}`, { method: "DELETE" });
+    if (!res.ok) {
+      setSubmissions(previous);
+      setError(`Failed to delete submission (status ${res.status})`);
+    }
+  }
+
+  async function clearAllSubmissions() {
+    const previous = submissions;
+    setSubmissions([]);
+    const res = await fetch(`${SUBMISSIONS_ENDPOINT}?developerId=${DEVELOPER_ID}`, { method: "DELETE" });
+    if (!res.ok) {
+      setSubmissions(previous);
+      setError(`Failed to clear submissions (status ${res.status})`);
+    }
+  }
+
+  return { submissions, error, loading, deleteSubmission, clearAllSubmissions };
 }

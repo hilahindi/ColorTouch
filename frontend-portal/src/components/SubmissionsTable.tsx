@@ -83,13 +83,15 @@ function ExpandedRow({ submission, colSpan }: { submission: Submission; colSpan:
 export default function SubmissionsTable({
   submissions,
   questions,
+  onDelete,
 }: {
   submissions: Submission[];
   questions: QuestionsData | null;
+  onDelete: (submissionId: string) => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const coreQuestions = questions?.core_questions ?? [];
-  const colSpan = coreQuestions.length + 5;
+  const colSpan = coreQuestions.length + 6;
 
   if (submissions.length === 0) {
     return (
@@ -115,6 +117,9 @@ export default function SubmissionsTable({
               <th className="whitespace-nowrap px-4 py-2.5 font-medium">Persona</th>
               <th className="min-w-[8rem] px-4 py-2.5 font-medium">Palette</th>
               <th className="min-w-[20rem] px-4 py-2.5 font-medium">AI Reasoning</th>
+              <th className="whitespace-nowrap px-4 py-2.5 font-medium">
+                <span className="sr-only">Delete</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -164,6 +169,21 @@ export default function SubmissionsTable({
                     </td>
                     <td className="min-w-[20rem] max-w-[26rem] px-4 py-3 text-xs leading-relaxed text-slate-600">
                       <span className="line-clamp-4">{s.palette.mutation_reason}</span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Delete Respondent ${respondentNumber}'s submission?`)) {
+                            onDelete(s.submission_id);
+                          }
+                        }}
+                        title="Delete submission"
+                        aria-label="Delete submission"
+                        className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      >
+                        🗑️
+                      </button>
                     </td>
                   </tr>
                   {isExpanded && <ExpandedRow submission={s} colSpan={colSpan} />}

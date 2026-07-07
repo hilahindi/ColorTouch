@@ -21,4 +21,12 @@ export class MongoSubmissionsRepository implements SubmissionsRepository {
     const docs = await this.collection.find(filter).sort({ submitted_at: -1 }).toArray();
     return docs.map(({ _id: _omit, ...record }) => record);
   }
+
+  async delete(submissionId: string): Promise<void> {
+    await this.collection.deleteOne({ _id: submissionId });
+  }
+
+  async deleteAll(developerId: string): Promise<void> {
+    await this.collection.deleteMany({ developer_id: developerId });
+  }
 }

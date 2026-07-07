@@ -67,6 +67,26 @@ export function createAnalyticsRouter(sources: AnalyticsSources): Router {
     res.status(200).json({ submissions });
   });
 
+  // Dashboard's per-row trash button — removes one submission from the
+  // table/analytics permanently (no undo).
+  router.delete("/analytics/submissions/:submissionId", async (req, res) => {
+    await sources.submissionsRepository.delete(req.params.submissionId);
+    res.status(204).send();
+  });
+
+  // Dashboard's "Clear all" button — wipes every submission recorded for
+  // this developer. Scoped to developerId (required) so clearing one
+  // developer's test data can't touch another developer's submissions.
+  router.delete("/analytics/submissions", async (req, res) => {
+    const developerId = typeof req.query.developerId === "string" ? req.query.developerId : undefined;
+    if (!developerId) {
+      res.status(400).json({ error: "MissingDeveloperId", message: "developerId query param is required." });
+      return;
+    }
+    await sources.submissionsRepository.deleteAll(developerId);
+    res.status(204).send();
+  });
+
   // AI-generated "who is this app for, and what does it provide" analysis,
   // grounded in the requesting developer's own app metadata plus aggregated
   // stats over their submissions so far.

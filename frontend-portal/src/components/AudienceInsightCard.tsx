@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const INSIGHT_ENDPOINT = "http://localhost:3000/analytics/audience-insight";
 
@@ -15,16 +15,20 @@ interface AudienceInsight {
   };
 }
 
-type Status = "loading" | "done" | "error";
+type Status = "idle" | "loading" | "done" | "error";
 
 /**
  * AI-generated "who is this app for, and what does it provide" analysis,
  * grounded in the developer's app metadata plus aggregated stats over every
  * questionnaire submission recorded this session.
+ *
+ * Loads only on demand (button click), not on mount — this hits the live
+ * Groq API with no caching, so auto-fetching on every dashboard visit would
+ * silently spend a real AI call each time.
  */
 export default function AudienceInsightCard() {
   const [insight, setInsight] = useState<AudienceInsight | null>(null);
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
   function load() {
@@ -45,8 +49,6 @@ export default function AudienceInsightCard() {
         setStatus("error");
       });
   }
-
-  useEffect(load, []);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -71,7 +73,7 @@ export default function AudienceInsightCard() {
               className="h-3.5 w-3.5 rounded-full border-2 border-slate-300 border-t-slate-600 animate-spin"
             />
           )}
-          {status === "loading" ? "Analyzing…" : "Regenerate"}
+          {status === "loading" ? "Analyzing…" : insight ? "Regenerate" : "Generate insight"}
         </button>
       </div>
 
@@ -79,6 +81,12 @@ export default function AudienceInsightCard() {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      )}
+
+      {status === "idle" && (
+        <p className="text-sm text-slate-400">
+          Click "Generate insight" to run the AI analysis.
+        </p>
       )}
 
       {status === "loading" && !insight && (
