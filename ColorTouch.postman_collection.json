@@ -1,0 +1,174 @@
+{
+  "info": {
+    "name": "ColorTouch API",
+    "description": "REST API for the ColorTouch SDK server: developer onboarding (base palette generation), end-user personalization, the canonical questionnaire, and dashboard analytics. Run the server locally first (`npm run dev` from server/, mock mode — no Groq calls) before using this collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    {
+      "key": "developerId",
+      "value": "faf06954-d9cb-4c66-a664-5de881a7b7bf",
+      "type": "string",
+      "description": "Must match a developerId that has already been onboarded (run \"Onboard Developer\" first)."
+    },
+    {
+      "key": "userId",
+      "value": "{{$guid}}",
+      "type": "string",
+      "description": "Postman's dynamic variable generates a fresh UUID per request run."
+    }
+  ],
+  "item": [
+    {
+      "name": "Onboarding",
+      "item": [
+        {
+          "name": "Onboard Developer (generate BasePalette)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"developerId\": \"{{developerId}}\",\n  \"appMetadata\": {\n    \"category\": \"food\",\n    \"app_name\": \"ColorTouch Recipes\",\n    \"app_description\": \"A recipe discovery app for home cooks who want quick, reliable weeknight meals.\",\n    \"target_audience\": \"Busy home cooks\",\n    \"personality_tags\": [\"Friendly\", \"Trustworthy\"],\n    \"kpis\": [\"engagement\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/developer/onboarding",
+              "host": ["{{baseUrl}}"],
+              "path": ["developer", "onboarding"]
+            },
+            "description": "201 on success, returning the generated BasePalette. 400 if appMetadata fails schema validation; 503 if AI generation fails (live mode only)."
+          }
+        },
+        {
+          "name": "Get Developer's Base Palette",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/developer/{{developerId}}/base-palette",
+              "host": ["{{baseUrl}}"],
+              "path": ["developer", "{{developerId}}", "base-palette"]
+            },
+            "description": "200 with the developer's BasePalette (wrapped as a PaletteResponse), or 404 if onboarding hasn't run yet for this developerId."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Personalization",
+      "item": [
+        {
+          "name": "Get Personalized Palette",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"developerId\": \"{{developerId}}\",\n  \"userId\": \"{{userId}}\",\n  \"userAnswers\": {\n    \"user_id\": \"{{userId}}\",\n    \"responses\": [\n      { \"question_id\": \"age_range\", \"answer_value\": \"25-34\" },\n      { \"question_id\": \"usage_hours\", \"answer_value\": \"Evening or at night (before bed)\" },\n      { \"question_id\": \"reading_style\", \"answer_value\": \"Thorough – reads and digs into every detail\" },\n      { \"question_id\": \"desired_feeling\", \"answer_value\": \"Calm, focus, and freedom from distraction\" },\n      { \"question_id\": \"visual_mode_preference\", \"answer_value\": \"Dark design to protect your eyes (Dark Mode)\" }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/personalized-palette",
+              "host": ["{{baseUrl}}"],
+              "path": ["personalized-palette"]
+            },
+            "description": "200 with a PersonalizedPalette. Requires the 5 core questions at minimum (see GET /questions for the full set and valid answer options). 404 if developerId hasn't been onboarded; 503 if AI generation fails (live mode only)."
+          }
+        },
+        {
+          "name": "Get Personalized Palette (debug mode)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"developerId\": \"{{developerId}}\",\n  \"userId\": \"{{userId}}\",\n  \"debug\": true,\n  \"userAnswers\": {\n    \"user_id\": \"{{userId}}\",\n    \"responses\": [\n      { \"question_id\": \"age_range\", \"answer_value\": \"18-24\" },\n      { \"question_id\": \"usage_hours\", \"answer_value\": \"Morning or on the go (commute / morning coffee)\" },\n      { \"question_id\": \"reading_style\", \"answer_value\": \"Quick scanner – just looking for the bottom line\" },\n      { \"question_id\": \"desired_feeling\", \"answer_value\": \"Energy, vitality, and innovation\" },\n      { \"question_id\": \"visual_mode_preference\", \"answer_value\": \"Bright, clean design (Light Mode)\" }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/personalized-palette",
+              "host": ["{{baseUrl}}"],
+              "path": ["personalized-palette"]
+            },
+            "description": "Same as the plain request, but the response also echoes back the exact prompt sent to the AI provider under `debug.prompt` (see the Personalization Simulator / Prompt Tuning pages in the portal, which use this)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Questions",
+      "item": [
+        {
+          "name": "Get Questionnaire",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["questions"]
+            },
+            "description": "The canonical question set (5 core + 10 optional deep-dive), the single source of truth every client should render from."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Analytics Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics"]
+            },
+            "description": "Apps onboarded, total personalizations, unique users, personalization rate, retention, and current AI provider mode (mock/live)."
+          }
+        },
+        {
+          "name": "Get Submissions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/submissions?developerId={{developerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "submissions"],
+              "query": [{ "key": "developerId", "value": "{{developerId}}" }]
+            },
+            "description": "One record per completed questionnaire for this developer: answers, resulting palette, and the AI's design rationale. Omit developerId to get every submission across all developers."
+          }
+        },
+        {
+          "name": "Get Audience Insight",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/audience-insight?developerId={{developerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "audience-insight"],
+              "query": [{ "key": "developerId", "value": "{{developerId}}" }]
+            },
+            "description": "AI-generated analysis of who this developer's end users are and what their app provides, grounded in aggregated stats over their submissions. 400 if developerId is missing; 404 if that developer hasn't onboarded an app yet."
+          }
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Get Recent Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs"]
+            },
+            "description": "Every request this server process has handled recently (method, path, status, duration) — backs the portal's System Logs page."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+theme: jekyll-theme-cayman
+title: ColorTouch
+description: An Android SDK + backend that personalizes an app's color palette per user via an AI color psychologist.
+show_downloads: false
