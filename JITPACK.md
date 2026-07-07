@@ -32,11 +32,18 @@ dependencyResolutionManagement {
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.hilahindi:colortouch-sdk:v0.1.0")
+    implementation("com.github.hilahindi:ColorTouch:v0.1.0")
 }
 ```
 
+Note the coordinate is `com.github.hilahindi:ColorTouch` (repo name as the
+artifactId), not `colortouch-sdk` — since `colortouch-sdk` is currently the
+only module with a `maven-publish` publication, Jitpack exposes it directly
+under the repo-level GAV rather than a per-module one. This was verified
+against the real v0.1.0 build (see below) — if a second module is ever
+published too, Jitpack would switch to per-module coordinates instead.
+
 `jitpack.yml` at the repo root pins the build JDK to 17 (required by AGP
-8.13.x). If a build fails on Jitpack, check the log at
-`https://jitpack.io/com/github/hilahindi/colortouch-sdk/v0.1.0/build.log`
-first — it's almost always a JDK or Gradle version mismatch.
+8.13.x). v0.1.0 built successfully in 4m 5s — confirmed via
+`https://jitpack.io/com/github/hilahindi/ColorTouch/v0.1.0/build.log`, which
+also has the full build log for any future failures.
