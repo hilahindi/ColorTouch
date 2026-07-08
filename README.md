@@ -1,7 +1,8 @@
 # ColorTouch System
 
-**Seminar Project — 10221 Advanced Seminar in Mobile Development**
+**Seminar Project — Advanced Seminar in Mobile Development**
 **Afeka College of Engineering**
+
 **Student:** Hila Hindi
 
 ---
@@ -10,14 +11,11 @@
 
 1. [Project Overview](#1-project-overview)
 2. [Screenshots & Demo](#2-screenshots--demo)
-3. [System Architecture](#3-system-architecture)
-4. [Component Breakdown](#4-component-breakdown)
-5. [Tech Stack](#5-tech-stack)
-6. [Project Structure](#6-project-structure)
-7. [API Reference](#7-api-reference)
-8. [Setup & Running Locally](#8-setup--running-locally)
-9. [Personalization Pipeline](#9-personalization-pipeline)
-10. [Design Decisions](#10-design-decisions)
+3. [Tech Stack](#3-tech-stack)
+4. [Project Structure](#4-project-structure)
+5. [API Reference](#5-api-reference)
+6. [Setup & Running Locally](#6-setup--running-locally)
+7. [Design Decisions](#7-design-decisions)
 
 ---
 
@@ -28,28 +26,20 @@ app, then personalizes it per end user from a short in-app questionnaire —
 using an LLM (Groq/Llama) acting as a color-psychology "design consultant."
 This repo is the backend + developer dashboard half of the system:
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| Server | Node.js + Express + TypeScript | Onboarding, personalization, questions, analytics — the API everything else talks to |
-| Developer Dashboard | React + TypeScript + Vite + Tailwind | App configuration, submissions analytics, personalization simulator, prompt tuning, live request logs |
+| Layer                  | Technology                               | Purpose                                                                                                                     |
+| ---------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Server                 | Node.js + Express + TypeScript           | Onboarding, personalization, questions, analytics — the API everything else talks to                                        |
+| Developer Dashboard    | React + TypeScript + Vite + Tailwind     | App configuration, submissions analytics, personalization simulator, prompt tuning, live request logs                       |
 | Android SDK + demo app | Kotlin + Jetpack Compose (separate repo) | Consumes this API and renders the returned palette live — see [ColorTouch-SDK](https://github.com/hilahindi/ColorTouch-SDK) |
-| AI provider | Groq (Llama 3.3 70B) | Generates palettes and personalization reasoning; fully mockable for cost-free development |
-| Database | MongoDB Atlas | Persists base palettes, personalized palettes, questionnaire answers, and submissions |
+| AI provider            | Groq (Llama 3.3 70B)                     | Generates palettes and personalization reasoning; fully mockable for cost-free development                                  |
+| Database               | MongoDB Atlas                            | Persists base palettes, personalized palettes, questionnaire answers, and submissions                                       |
 
-The system has three moving parts:
-
-1. **Onboarding** — a developer describes their app once (category, brand
-   personality, KPIs); the server asks the LLM to generate a Material3
-   `BasePalette` (light + dark color schemes) that becomes the app's default
-   theme.
-2. **Personalization** — each end user answers a short in-app questionnaire
-   (5 required + 10 optional questions) via the ColorTouch Android SDK. The
-   server sends their answers plus the developer's `BasePalette` to the LLM
-   acting as a color psychologist, and gets back a personalized light/dark
-   palette, UI behavior hints, and a written design rationale.
-3. **Analytics** — the developer dashboard shows every submission,
-   per-question answer distributions, and an on-demand AI-generated summary
-   of who the app's actual audience turned out to be.
+Three moving parts: a developer **onboards** their app once and the LLM
+generates a Material3 `BasePalette`; each end user **personalizes** it via a
+short in-app questionnaire, which the LLM turns into a tailored light/dark
+palette plus a written design rationale; and the dashboard's **analytics**
+surface every submission, per-question answer distributions, and an
+on-demand AI summary of who the app's actual audience turned out to be.
 
 ---
 
@@ -57,150 +47,69 @@ The system has three moving parts:
 
 ### Developer Dashboard
 
-| Dashboard (KPIs + submissions) | Submission detail (palette + AI reasoning) |
-|:---:|:---:|
-| ![Dashboard](docs/screenshots/dashboard-top.png) | ![Submission detail](docs/screenshots/dashboard-submission-detail.png) |
-
-| Answer distribution + Audience Insight | App Configuration (onboarding) |
-|:---:|:---:|
-| ![Dashboard full](docs/screenshots/dashboard-full.png) | ![App configuration](docs/screenshots/app-config.png) |
-
-| Personalization Simulator (debug view) | Prompt Tuning | System Logs |
-|:---:|:---:|:---:|
-| ![Simulator](docs/screenshots/simulator.png) | ![Prompt tuning](docs/screenshots/prompt-tuning.png) | ![System logs](docs/screenshots/system-logs.png) |
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/dashboard-top.png" width="280" alt="Dashboard"><br><sub>Dashboard (KPIs + submissions)</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard-submission-detail.png" width="280" alt="Submission detail"><br><sub>Submission detail (palette + AI reasoning)</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard-full.png" width="280" alt="Dashboard full"><br><sub>Answer distribution + Audience Insight</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/app-config.png" width="280" alt="App configuration"><br><sub>App Configuration (onboarding)</sub></td>
+<td align="center"><img src="docs/screenshots/simulator.png" width="280" alt="Simulator"><br><sub>Personalization Simulator (debug view)</sub></td>
+<td align="center"><img src="docs/screenshots/prompt-tuning.png" width="280" alt="Prompt tuning"><br><sub>Prompt Tuning</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/system-logs.png" width="280" alt="System logs"><br><sub>System Logs</sub></td>
+<td></td>
+<td></td>
+</tr>
+</table>
 
 ### Android App
 
 The bundled sample app, **ColorTouch Recipes** (from the
-[ColorTouch-SDK](https://github.com/hilahindi/ColorTouch-SDK) repo) — every
-color on screen is generated by this server, none are hardcoded:
+[ColorTouch-SDK](https://github.com/hilahindi/ColorTouch-SDK) repo), renders
+every color on screen — cards, icons, buttons — from a palette this server
+generated. Tapping the palette button re-opens the in-app questionnaire —
+itself themed live with the current palette — and requests a fresh
+personalization; five different sets of answers already produce five
+visually distinct, coherent Material3 themes on the exact same layout, live,
+with no app restart:
 
-| Default (base palette) | Questionnaire (themed live) | Recipe detail |
-|:---:|:---:|:---:|
-| ![Recipes home](docs/screenshots/android/01-recipes-home.png) | ![Questionnaire](docs/screenshots/android/02-questionnaire-themed.png) | ![Recipe detail](docs/screenshots/android/03-recipe-detail.png) |
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/android/questionnaire.png" width="160" alt="In-app questionnaire"></td>
+<td align="center"><img src="docs/screenshots/android/palette-warm.png" width="160" alt="Warm palette"></td>
+<td align="center"><img src="docs/screenshots/android/palette-sage.png" width="160" alt="Sage palette"></td>
+<td align="center"><img src="docs/screenshots/android/palette-blush.png" width="160" alt="Blush palette"></td>
+<td align="center"><img src="docs/screenshots/android/palette-periwinkle.png" width="160" alt="Periwinkle palette"></td>
+<td align="center"><img src="docs/screenshots/android/palette-slate.png" width="160" alt="Slate palette"></td>
+</tr>
+</table>
 
-| Deep-dive prompt | Personalized (re-themed live) | Favorites / Settings |
-|:---:|:---:|:---:|
-| ![Deep-dive prompt](docs/screenshots/android/04-deepdive-prompt.png) | ![Personalized recipes](docs/screenshots/android/05-personalized-recipes.png) | ![Favorites](docs/screenshots/android/06-favorites.png) |
-
-Four genuinely distinct AI-generated personas from the same questionnaire,
-driven purely by different answers — not a filter over one color scheme:
-
-| Morning Momentum | Deep Focus | Creative Spark | Night Owl |
-|:---:|:---:|:---:|:---:|
-| ![Morning Momentum](docs/screenshots/android/05-personalized-recipes.png) | ![Deep Focus](docs/screenshots/android/08-deepfocus-recipes.png) | ![Creative Spark](docs/screenshots/android/09-creativespark-recipes.png) | ![Night Owl](docs/screenshots/android/10-nightowl-recipes.png) |
-
----
-
-## 3. System Architecture
-
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                  Android App  (ColorTouch-SDK repo)                │
-│                                                                     │
-│   ColorTouchClient ──► Retrofit/OkHttp ──► StateFlow<Palette>       │
-└──────────────────────────────┬──────────────────────────────────────┘
-                                │ HTTP
-                                │ GET  /developer/:id/base-palette
-                                │ POST /personalized-palette
-                                ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                   ColorTouch Server  (Express / TypeScript)         │
-│                                                                     │
-│   onboarding.routes ─────► OnboardingService                        │
-│   personalization.routes ─► PersonalizedPaletteService               │
-│   analytics.routes ──────► Submissions / PersonalizedPalette stats   │
-│                                    │                                 │
-│                                    ▼                                 │
-│                            GroqAiProvider                            │
-│                   (retrying, schema-validated, mockable)              │
-│                                    │                                 │
-└────────────────────────────────────┼─────────────────────────────────┘
-                                     │ mock in dev · real in `dev:live`
-                                     ▼
-                            Groq  (Llama 3.3 70B)
-
-┌───────────────────────────────────────────────────────────────────┐
-│                          MongoDB Atlas                               │
-│   base_palettes · personalized_palettes · user_answers · submissions │
-└───────────────────────────────────▲───────────────────────────────────┘
-                                     │ HTTP (fetch)
-┌────────────────────────────────────┴──────────────────────────────────┐
-│                  Developer Dashboard  (React / Vite)                    │
-│   Dashboard · App Configuration · Personalization Simulator ·           │
-│   Prompt Tuning · System Logs                                           │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow Summary
-
-1. A developer onboards their app once via the dashboard's **App
-   Configuration** page (`POST /developer/onboarding`); the server asks Groq
-   to generate a `BasePalette` and persists it.
-2. The Android SDK fetches that `BasePalette` (`GET
-   /developer/:id/base-palette`) as the app's default theme, and polls it
-   periodically so a developer regenerating colors shows up live.
-3. When an end user completes the in-app questionnaire, the SDK calls `POST
-   /personalized-palette`. The server checks its cache first; on a miss it
-   asks Groq to personalize, validates the response against a JSON Schema,
-   persists it, and records the completed questionnaire as a submission.
-4. The dashboard reads `/analytics`, `/analytics/submissions`, and
-   `/analytics/audience-insight` to render KPIs, the submissions table, and
-   an AI-generated summary of the app's audience.
+**[Full demo video](docs/screenshots/demo.webm)** —
+browsing the recipe app, opening the questionnaire, and watching the whole
+UI re-theme live after each submission.
 
 ---
 
-## 4. Component Breakdown
+## 3. Tech Stack
 
-### 4.1 Server (`server/src/`)
-
-| Module | Responsibility |
-|---|---|
-| `api/routes/*.routes.ts` | Express route definitions — onboarding, personalization, questions, analytics, logs |
-| `api/controllers/*.controller.ts` | Maps service results/errors to HTTP status codes the SDK and dashboard can react to |
-| `api/middleware/*.middleware.ts` | Required-field checks + JSON Schema validation, run before controllers |
-| `services/palette/onboarding.service.ts` | Generates and persists a developer's `BasePalette` |
-| `services/palette/personalizedPalette.service.ts` | Cache-aware personalization: reuses a cached result if the base palette hasn't changed since, otherwise regenerates via the AI provider; records every completed questionnaire as a submission |
-| `services/ai/aiClient.ts` | `GroqAiProvider` — retrying (×3), schema-validated AI calls; deterministic mock mode when `NODE_ENV !== production` |
-| `services/ai/promptBuilder.ts` | Builds the exact system/user prompt sent to the LLM |
-| `services/questions/questionsService.ts` | Canonical question set (5 core + 10 deep-dive) and answer→context mapping |
-| `services/submissions/submissionsService.ts` | Aggregates submissions into stats for audience-insight prompts and dashboard charts |
-| `repositories/mongo*Repository.ts` | MongoDB-backed persistence for base palettes, personalized palettes, user answers, and submissions |
-| `cache/personalizedPaletteCache.ts` | Fast-path read cache for repeat personalization requests |
-| `validation/schemaValidator.ts` | Ajv-backed JSON Schema validation, shared by request middleware and AI-response validation |
-
-### 4.2 Developer Dashboard (`frontend-portal/src/`)
-
-| Component / Page | Responsibility |
-|---|---|
-| `pages/DashboardPage.tsx` | KPIs, submissions table, answer-distribution charts, audience insight |
-| `pages/AppConfigPage.tsx` | Onboarding form → generates and previews a `BasePalette` |
-| `components/PersonalizationSimulator.tsx` | Debug view: fill the questionnaire, inspect the exact AI request and response |
-| `pages/PromptTuningPage.tsx` | Edit the system prompt and re-test it live against real answers |
-| `pages/SystemLogsPage.tsx` | Live feed of every request the server has handled this session |
-| `components/SubmissionsTable.tsx` | Submissions list with per-row delete and an expandable palette/answer detail view |
-| `components/AnswerDistributionCharts.tsx`, `DonutChart.tsx` | Per-question answer distribution, computed from submissions |
-| `hooks/useSubmissions.ts`, `useQuestions.ts` | Data fetching, plus optimistic delete / clear-all |
+| Layer                   | Technology                    |
+| ----------------------- | ----------------------------- |
+| Server language/runtime | TypeScript, Node.js           |
+| Server framework        | Express                       |
+| Database                | MongoDB (Atlas)               |
+| AI provider             | Groq SDK (Llama 3.3 70B)      |
+| Schema validation       | Ajv (JSON Schema, draft-07)   |
+| Dashboard framework     | React + TypeScript            |
+| Dashboard build tool    | Vite                          |
+| Dashboard styling       | Tailwind CSS                  |
+| API testing             | Postman collection (included) |
 
 ---
 
-## 5. Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Server language/runtime | TypeScript, Node.js |
-| Server framework | Express |
-| Database | MongoDB (Atlas) |
-| AI provider | Groq SDK (Llama 3.3 70B) |
-| Schema validation | Ajv (JSON Schema, draft-07) |
-| Dashboard framework | React + TypeScript |
-| Dashboard build tool | Vite |
-| Dashboard styling | Tailwind CSS |
-| API testing | Postman collection (included) |
-
----
-
-## 6. Project Structure
+## 4. Project Structure
 
 ```
 ColorTouch-System/
@@ -241,20 +150,20 @@ ColorTouch-System/
 
 ---
 
-## 7. API Reference
+## 5. API Reference
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/developer/onboarding` | POST | Generate and persist a developer's `BasePalette` from app metadata |
-| `/developer/:developerId/base-palette` | GET | Fetch a developer's current `BasePalette` (polled by the Android SDK) |
-| `/personalized-palette` | POST | Personalize a palette for one end user from their questionnaire answers |
-| `/questions` | GET | The canonical question set (5 core + 10 deep-dive) |
-| `/analytics` | GET | Apps onboarded, personalizations generated, unique users, AI mode |
-| `/analytics/submissions` | GET | Every recorded submission for a developer |
-| `/analytics/submissions/:submissionId` | DELETE | Delete one submission (cascades to its palette + answers) |
-| `/analytics/submissions` | DELETE | Clear all submissions for a developer (cascades) |
-| `/analytics/audience-insight` | GET | AI-generated "who is this app for" summary |
-| `/logs` | GET | Live feed of every request this server instance has handled |
+| Endpoint                               | Method | Description                                                             |
+| -------------------------------------- | ------ | ----------------------------------------------------------------------- |
+| `/developer/onboarding`                | POST   | Generate and persist a developer's `BasePalette` from app metadata      |
+| `/developer/:developerId/base-palette` | GET    | Fetch a developer's current `BasePalette` (polled by the Android SDK)   |
+| `/personalized-palette`                | POST   | Personalize a palette for one end user from their questionnaire answers |
+| `/questions`                           | GET    | The canonical question set (5 core + 10 deep-dive)                      |
+| `/analytics`                           | GET    | Apps onboarded, personalizations generated, unique users, AI mode       |
+| `/analytics/submissions`               | GET    | Every recorded submission for a developer                               |
+| `/analytics/submissions/:submissionId` | DELETE | Delete one submission (cascades to its palette + answers)               |
+| `/analytics/submissions`               | DELETE | Clear all submissions for a developer (cascades)                        |
+| `/analytics/audience-insight`          | GET    | AI-generated "who is this app for" summary                              |
+| `/logs`                                | GET    | Live feed of every request this server instance has handled             |
 
 Import [`ColorTouch.postman_collection.json`](ColorTouch.postman_collection.json)
 into Postman for realistic example bodies and collection variables
@@ -262,7 +171,7 @@ into Postman for realistic example bodies and collection variables
 
 ---
 
-## 8. Setup & Running Locally
+## 6. Setup & Running Locally
 
 ### Prerequisites
 
@@ -278,6 +187,7 @@ npm install
 ```
 
 Create `server/.env`:
+
 ```
 GROQ_API_KEY=your_groq_api_key
 MONGODB_URI=your_mongodb_atlas_connection_string
@@ -305,7 +215,7 @@ set `PORTAL_ORIGIN` in `server/.env` if you run the portal elsewhere).
 
 See [ColorTouch-SDK](https://github.com/hilahindi/ColorTouch-SDK) — clone it
 separately and open it in Android Studio. Onboard an app via this portal's
-**App Configuration** page first — the sample app only *fetches* a base
+**App Configuration** page first — the sample app only _fetches_ a base
 palette, it doesn't onboard one itself.
 
 ### Step 4 — Verify End-to-End
@@ -318,53 +228,12 @@ palette, it doesn't onboard one itself.
 
 ---
 
-## 9. Personalization Pipeline
+## 7. Design Decisions
 
-```
-SDK: POST /personalized-palette  (developerId, userId, answers)
-        │
-        ▼
-PersonalizedPaletteService.getOrGeneratePersonalizedPalette()
-        │
-        ├─► save userAnswers (always, cache hit or miss)
-        │
-        ├─► cache.get(userId) fresh for current base_palette_version?
-        │        │
-        │        ├─ yes ──► record submission ──► return cached palette
-        │        │
-        │        └─ no ───┐
-        │                 ▼
-        │        GroqAiProvider.generatePersonalizedPalette()
-        │           (mock in dev · real Groq in `dev:live` · retries ×3)
-        │                 │
-        │                 ▼
-        │        validate against PersonalizedPalette JSON Schema
-        │                 │
-        │                 ▼
-        │        save to personalized_palettes + cache.set()
-        │                 │
-        │                 ▼
-        └──────► record submission ──► return generated palette
-```
-
-**Cache invalidation:** a cached palette is only reused if its
-`base_palette_id`/`base_palette_version` still matches the developer's
-current `BasePalette` — regenerating a developer's base colors in the
-dashboard automatically invalidates every cached personalization for that
-developer, without an explicit cache-clearing step.
-
----
-
-## 10. Design Decisions
-
-| Decision | Rationale |
-|---|---|
-| `NODE_ENV`-gated mock/live AI provider | The entire flow — SDK, dashboard, every endpoint — is exercisable end-to-end with zero Groq cost during development. Only `npm run dev:live` ever calls the real API. |
-| Retrying AI client (up to 3 attempts) | A malformed completion or transient network error is retried automatically rather than surfacing an error on the first hiccup; after 3 failures it returns a 503 the SDK is expected to react to by falling back to its bundled default palette. |
-| JSON Schema validation gate before persistence | Every AI response (base palette, personalized palette, audience insight) is validated against an Ajv schema before being saved or returned — a malformed generation is retried, never shipped to an end user. |
-| Cache keyed by `userId`, invalidated by `base_palette_version` | A returning user only triggers a fresh (costly) AI regeneration if the developer's base palette actually changed since their last personalization; otherwise the cached result is reused and still recorded as a submission. |
-| Cascading deletes across 3 collections | Deleting a submission (or "Clear all") also removes its `personalized_palettes` and `user_answers` records, so the dashboard's KPI tiles stay numerically consistent with the submissions table instead of silently diverging. |
-| In-memory cache behind a Redis-shaped interface | The read cache is in-memory today — sufficient for a single-instance seminar deployment — but implements the same interface a Redis-backed cache would, so swapping it in later is a one-file change. |
-| One retrying `AiProvider` shared by all 3 AI call sites | `generateBasePalette`, `generatePersonalizedPalette`, and `generateAudienceInsight` all go through the same retry/validate/mock-gate machinery — no call site can accidentally skip validation or retries. |
-| CORS origin from `PORTAL_ORIGIN` env var | The allowed dashboard origin is configurable per deployment without a code change, defaulting to the local dev port. |
-| Tab-based dashboard navigation (no router) | Five pages, no deep-linking requirement, no back-button semantics to preserve — a router would add a dependency and routing config for no real benefit at this scale. |
+| Decision                                                       | Rationale                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`-gated mock/live AI provider                         | The entire flow — SDK, dashboard, every endpoint — is exercisable end-to-end with zero Groq cost during development. Only `npm run dev:live` ever calls the real API.                                                                            |
+| Retrying AI client (up to 3 attempts)                          | A malformed completion or transient network error is retried automatically rather than surfacing an error on the first hiccup; after 3 failures it returns a 503 the SDK is expected to react to by falling back to its bundled default palette. |
+| JSON Schema validation gate before persistence                 | Every AI response (base palette, personalized palette, audience insight) is validated against an Ajv schema before being saved or returned — a malformed generation is retried, never shipped to an end user.                                    |
+| Cache keyed by `userId`, invalidated by `base_palette_version` | A returning user only triggers a fresh (costly) AI regeneration if the developer's base palette actually changed since their last personalization; otherwise the cached result is reused and still recorded as a submission.                     |
+| Cascading deletes across 3 collections                         | Deleting a submission (or "Clear all") also removes its `personalized_palettes` and `user_answers` records, so the dashboard's KPI tiles stay numerically consistent with the submissions table instead of silently diverging.                   |
