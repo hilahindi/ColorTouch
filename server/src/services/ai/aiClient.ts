@@ -115,7 +115,13 @@ function getGroqClient(): Groq {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new AiGenerationError("GROQ_API_KEY is not set");
 
-  groqClient = new Groq({ apiKey });
+  // The SDK's own default retries (maxRetries: 2) are invisible to
+  // withRetry() above and stack silently on top of it, multiplying real
+  // Groq API calls per request without ever showing up in our "AI ERROR"
+  // logs. withRetry() already covers network errors as well as
+  // schema-validation failures the SDK can't see, so disable the SDK's
+  // layer and keep retries in one visible place.
+  groqClient = new Groq({ apiKey, maxRetries: 0 });
   return groqClient;
 }
 

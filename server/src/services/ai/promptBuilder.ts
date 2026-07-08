@@ -144,7 +144,7 @@ ${describeUiBehaviorGuidance()}
 Output schema (strict):
 - "colors.light" and "colors.dark" must each contain exactly these fields, each a "#RRGGBB" hex string: ${buildColorSchemeFieldList()}.
 - "ui_behavior" must contain exactly: "border_radius_dp" (integer 0-32), "animation_speed" ("slow" | "normal" | "fast" | "reduced_motion"), "contrast_level" ("low" | "normal" | "high"), "elevation_style" ("flat" | "shadowed").
-- "bi_insights" must contain exactly: "persona_label" (string — a short, human-readable persona name synthesized from your analysis), "confidence_score" (number 0-1), "traits" (string array, max 10), "mutation_reason" (string — your Design Rationale: 1-3 sentences explaining why these colors are the right match for this person, and why they differ from the base palette), optionally "segment" (string).
+- "bi_insights" must contain exactly: "persona_label" (string — a short, human-readable persona name synthesized from your analysis), "confidence_score" (number 0-1), "traits" (string array, max 10), "mutation_reason" (string, max 300 characters — your Design Rationale: 1-3 sentences explaining why these colors are the right match for this person, and why they differ from the base palette), optionally "segment" (string).
 - Do not add, omit, or rename fields. Do not include palette_id, base_palette_id, base_palette_version, user_id, schema_version, or generated_at — the caller fills those in.
 
 ${OUTPUT_FORMAT_RULE}`;
