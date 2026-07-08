@@ -49,17 +49,17 @@ on-demand AI summary of who the app's actual audience turned out to be.
 
 <table>
 <tr>
-<td align="center"><img src="docs/screenshots/dashboard-top.png" width="280" alt="Dashboard"><br><sub>Dashboard (KPIs + submissions)</sub></td>
-<td align="center"><img src="docs/screenshots/dashboard-submission-detail.png" width="280" alt="Submission detail"><br><sub>Submission detail (palette + AI reasoning)</sub></td>
-<td align="center"><img src="docs/screenshots/dashboard-full.png" width="280" alt="Dashboard full"><br><sub>Answer distribution + Audience Insight</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard/dashboard-top.png" width="280" alt="Dashboard"><br><sub>Dashboard (KPIs + submissions)</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard/dashboard-submission-detail.png" width="280" alt="Submission detail"><br><sub>Submission detail (palette + AI reasoning)</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard/dashboard-full.png" width="280" alt="Dashboard full"><br><sub>Answer distribution + Audience Insight</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/screenshots/app-config.png" width="280" alt="App configuration"><br><sub>App Configuration (onboarding)</sub></td>
-<td align="center"><img src="docs/screenshots/simulator.png" width="280" alt="Simulator"><br><sub>Personalization Simulator (debug view)</sub></td>
-<td align="center"><img src="docs/screenshots/prompt-tuning.png" width="280" alt="Prompt tuning"><br><sub>Prompt Tuning</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard/app-config.png" width="280" alt="App configuration"><br><sub>App Configuration (onboarding)</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard/simulator.png" width="280" alt="Simulator"><br><sub>Personalization Simulator (debug view)</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard/prompt-tuning.png" width="280" alt="Prompt tuning"><br><sub>Prompt Tuning</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/screenshots/system-logs.png" width="280" alt="System logs"><br><sub>System Logs</sub></td>
+<td align="center"><img src="docs/screenshots/dashboard/system-logs.png" width="280" alt="System logs"><br><sub>System Logs</sub></td>
 <td></td>
 <td></td>
 </tr>
@@ -87,7 +87,7 @@ with no app restart:
 </tr>
 </table>
 
-**[Full demo video](docs/screenshots/demo.webm)** —
+**[Full demo video](docs/screenshots/android/demo.webm)** —
 browsing the recipe app, opening the questionnaire, and watching the whole
 UI re-theme live after each submission.
 
